@@ -1,6 +1,6 @@
 import pytest
 
-from src.utils import circular_left_shift, circular_right_shift
+from src.exact_diagonalization.utils import circular_left_shift, circular_right_shift
 
 
 

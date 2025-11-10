@@ -1,6 +1,6 @@
 import pytest
 
-from src.basis import Basis
+from src.exact_diagonalization.basis import Basis
 
 def test_generate_basis():
     basis = Basis(2, 0)

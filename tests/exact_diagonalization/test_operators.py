@@ -1,5 +1,5 @@
 import pytest
-from src.operators import count_pairs, flip_bit
+from src.exact_diagonalization.operators import count_pairs, flip_bit
 
 def test_count_pairs():
     assert count_pairs(0b0, 1, 1) == 0

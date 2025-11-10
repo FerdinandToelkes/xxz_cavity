@@ -1,6 +1,6 @@
-from src.utils import circular_right_shift
+from src.exact_diagonalization.utils import circular_right_shift
 
-def count_pairs(n: int, d: int, width: int, boundary_condition: str = "periodic") -> int:
+def count_pairs(n: int, d: int, width: int, boundary_conditions: str = "periodic") -> int:
     """
     Count neighboring 1-1 pairs that are d places apart in bit representation. Note, that
     periodic boundary conditions are considered.
@@ -15,10 +15,10 @@ def count_pairs(n: int, d: int, width: int, boundary_condition: str = "periodic"
         count_pairs(0b111011, 1) -> 4
         count_pairs(0b111011, 2) -> 4 
     """
-    if boundary_condition == "periodic":
+    if boundary_conditions == "periodic":
         # perform circular shift by d and count 1-1 pairs
         n_shifted = circular_right_shift(n, d, width)
-    elif boundary_condition == "open":
+    elif boundary_conditions == "open":
         # perform regular shift by d and count 1-1 pairs
         n_shifted = n >> d
     else:
@@ -28,8 +28,3 @@ def count_pairs(n: int, d: int, width: int, boundary_condition: str = "periodic"
 def flip_bit(n: int, i: int) -> int:
     """Flip bit i in integer n. Note: i starts from 0 (least significant bit)."""
     return n ^ (1 << i)
-
-
-# def bit_occupancy(n: int, i: int) -> int:
-#     """Return 1 if site i is occupied."""
-#     return (n >> i) & 1
