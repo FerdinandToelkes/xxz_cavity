@@ -1,5 +1,5 @@
 import pytest
-from src.exact_diagonalization.operators import count_pairs, flip_bit
+from src.exact_diagonalization.operators import count_pairs, flip_bit, count_bits_between, fermion_creator, fermion_annihilator
 
 def test_count_pairs():
     assert count_pairs(0b0, 1, 1) == 0
@@ -25,3 +25,46 @@ def test_flip_bit():
     assert flip_bit(0b0000, 1) == 0b0010
     assert flip_bit(0b1010, 2) == 0b1110
     assert flip_bit(0b1110, 2) == 0b1010
+
+def test_count_bits_between():
+    assert count_bits_between(0b0, 0, 0) == 0
+    assert count_bits_between(0b1, 0, 0) == 1
+    assert count_bits_between(0b1101, 1, 3, inclusive=True) == 2
+    assert count_bits_between(0b1101, 1, 3, inclusive=False) == 1
+    assert count_bits_between(0b111111, 0, 5, inclusive=True) == 6
+    assert count_bits_between(0b111111, 0, 5, inclusive=False) == 5
+
+    with pytest.raises(ValueError):
+        count_bits_between(0b1101, 3, 1)
+
+def test_fermion_creator():
+    # basic tests
+    assert fermion_creator(0b0000, 0, 4) == 0b0001
+    assert fermion_creator(0b0001, 1, 4) == 0b0011
+    assert fermion_creator(0b0011, 2, 4) == 0b0111
+    assert fermion_creator(0b0111, 3, 4) == 0b1111
+    assert fermion_creator(0b1111, 0, 4) == 0  
+    assert fermion_creator(0b1111, 2, 4) == 0  
+    # test fermionic sign
+    assert fermion_creator(0b10, 0, 2) == -0b11
+    assert fermion_creator(0b100, 1, 3) == -0b110
+    assert fermion_creator(0b100, 0, 3) == -0b101
+    assert fermion_creator(0b110, 0, 3) == +0b111
+    assert fermion_creator(0b1010001110, 5, 10) == 0b1010101110
+    assert fermion_creator(0b1010001110, 0, 10) == -0b1010001111
+
+def test_fermion_annihilator():
+    # basic tests
+    assert fermion_annihilator(0b0001, 0, 4) == 0b0000
+    assert fermion_annihilator(0b0011, 1, 4) == 0b0001
+    assert fermion_annihilator(0b0111, 2, 4) == 0b0011
+    assert fermion_annihilator(0b1111, 3, 4) == 0b0111
+    assert fermion_annihilator(0b0000, 0, 4) == 0
+    assert fermion_annihilator(0b1010, 2, 4) == 0
+    # test fermionic sign
+    assert fermion_annihilator(0b11, 0, 2) == -0b10
+    assert fermion_annihilator(0b110, 1, 3) == -0b100
+    assert fermion_annihilator(0b101, 0, 3) == -0b100
+    assert fermion_annihilator(0b111, 0, 3) == +0b110
+    assert fermion_annihilator(0b1010101110, 5, 10) == 0b1010001110
+    assert fermion_annihilator(0b1010001111, 0, 10) == -0b1010001110
