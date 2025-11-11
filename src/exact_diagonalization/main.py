@@ -18,8 +18,8 @@ def parse_arguments():
 
 def main(L: int, N: int, t: float, U: float, boundary_conditions: str):
     basis = Basis(L, N)  # L sites, N particles
-    hamiltonian = Hamiltonian(basis, t=t, U=U, boundary_conditions=boundary_conditions)
-    H = hamiltonian.matrix
+    hamiltonian = Hamiltonian(basis, boundary_conditions=boundary_conditions)
+    H = hamiltonian.construct_hamiltonian_matrix(t=t, U=U)
     run_checks = True
     if run_checks is True:
         H_np = H.toarray()

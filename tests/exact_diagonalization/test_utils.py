@@ -1,6 +1,9 @@
 import pytest
+import numpy as np
 
-from src.exact_diagonalization.utils import circular_left_shift, circular_right_shift
+from scipy.sparse import csr_matrix
+    
+from src.exact_diagonalization.utils import circular_left_shift, circular_right_shift, is_hermitian
 
 
 
@@ -29,3 +32,12 @@ def test_circular_right_shift():
 
     with pytest.raises(ValueError):
         circular_right_shift(0b1010011010, 5, 9)
+
+def test_is_hermitian():
+    A = csr_matrix(np.array([[1, 2 + 1j], [2 - 1j, 3]]))
+    B = csr_matrix(np.array([[1, 2], [3, 4]]))
+    C = csr_matrix(np.array([[0, 1j], [-1j, 0], [0, 0]]))  # non-square matrix
+
+    assert is_hermitian(A) == True
+    assert is_hermitian(B) == False
+    assert is_hermitian(C) == False

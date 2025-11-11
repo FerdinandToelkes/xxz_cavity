@@ -56,7 +56,7 @@ def count_bits_between(x: int, i: int, j: int, inclusive: bool = True) -> int:
     return (x & mask).bit_count()
 
 
-def fermion_creator(n: int, i: int, width: int) -> int:
+def fermion_creator(n: int, i: int, width: int) -> tuple[int, int]:
     """
     Apply creation operator at site i on state n.
     Args:
@@ -64,17 +64,17 @@ def fermion_creator(n: int, i: int, width: int) -> int:
         i (int): The site index where the creation operator is applied.
         width (int): The bit-width to consider.
     Returns:
-        int: The new state after applying the creation operator, or 0 if the site is already occupied.
+        tuple[int, int]: The sign and the new basis state after applying the creation operator, or (0, 0) if the site is already occupied.
     """
     if n & (1 << i) != 0:
         # site already occupied
-        return 0
+        return 0, 0
     else:
         # sign = sum_{i>j} b_i for |s> = |b_{width-1} ... b_0>
         sign = (-1) ** count_bits_between(n, i+1, width, inclusive=False)
-        return sign * flip_bit(n, i)
+        return sign, flip_bit(n, i)
     
-def fermion_annihilator(n: int, i: int, width: int) -> int:
+def fermion_annihilator(n: int, i: int, width: int) -> tuple[int, int]:
     """
     Apply annihilation operator at site i on state n.
     Args:
@@ -82,13 +82,39 @@ def fermion_annihilator(n: int, i: int, width: int) -> int:
         i (int): The site index where the annihilation operator is applied.
         width (int): The bit-width to consider.
     Returns:
-        int: The new state after applying the annihilation operator, or 0 if the site is unoccupied.
+        tuple[int, int]: The sign and the new basis state after applying the annihilation operator, or (0, 0) if the site is unoccupied.
     """
     if n & (1 << i) == 0:
         # site unoccupied
-        return 0
+        return 0, 0
     else:
         # sign = sum_{i>j} b_i for |s> = |b_{width-1} ... b_0>
         sign = (-1) ** count_bits_between(n, i+1, width, inclusive=False)
-        print(f"sign: {sign}, n: {bin(n)}, i: {i}, width: {width}")
-        return sign * flip_bit(n, i)
+        return sign, flip_bit(n, i)
+    
+def number_operator(n: int, i: int) -> tuple[int, int]:
+    """
+    Apply number operator at site i on state n. Note, this operator is diagonal in the occupation basis.
+    Args:
+        n (int): The integer representing the current state.
+        i (int): The site index where the number operator is applied.
+    Returns:
+        tuple[int, int]: The occupation number (0 or 1) and the new basis state after applying the number operator.
+    """
+    n_i = (n >> i) & 1
+    return (n_i, n_i*n)
+
+def total_number_operator(n: int, width: int) -> tuple[int, int]:
+    """
+    Apply total number operator on state n, with N = sum_i n_i. Note, this operator is diagonal in the occupation basis.
+    Args:
+        n (int): The integer representing the current state.
+        width (int): The bit-width to consider.
+    Returns:
+        tuple[int, int]: The total number of occupied sites and the new basis state after applying the total number operator.
+    """
+    # ensure that we only count bits within the specified width
+    mask = (1 << width) - 1
+    N = (n & mask).bit_count()
+    final_state = 0 if N == 0 else n
+    return (N, final_state)

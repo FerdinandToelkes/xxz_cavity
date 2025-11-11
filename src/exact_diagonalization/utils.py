@@ -1,4 +1,5 @@
 
+from scipy.sparse import spmatrix
 
 def circular_left_shift(n: int, k: int, width: int) -> int:
     """
@@ -57,5 +58,24 @@ def circular_right_shift(n: int, k: int, width: int) -> int:
     # Mask to keep only the relevant width bits, e.g. 10100101 & 0011111 = 00101
     n_rotated = n_rotated & ((1 << width) - 1)
     return n_rotated
+
+
+def is_hermitian(A: spmatrix, tol: float =1e-12) -> bool:
+    """
+    Check if a sparse matrix A is Hermitian within a given tolerance.
+    Args:
+        A (spmatrix): The sparse matrix to check.
+        tol (float): The tolerance for numerical equality.
+    Returns:
+        bool: True if A is Hermitian, False otherwise.
+    """
+    if A.shape[0] != A.shape[1]:
+        return False
+    diff = A - A.getH()  # getH() = conjugate transpose
+    # Check if all nonzero entries are below tolerance
+    if diff.nnz == 0:
+        return True
+    return abs(diff.data).max() < tol
+
 
 
