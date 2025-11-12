@@ -1,8 +1,13 @@
 import argparse
+import numpy as np
+import time
+import matplotlib.pyplot as plt 
+
 from scipy.sparse.linalg import eigsh 
 
 from src.exact_diagonalization.hamiltonian import Hamiltonian
 from src.exact_diagonalization.basis import Basis
+
 
 
 def parse_arguments():
@@ -19,20 +24,30 @@ def parse_arguments():
 def main(L: int, N: int, t: float, U: float, boundary_conditions: str):
     basis = Basis(L, N)  # L sites, N particles
     hamiltonian = Hamiltonian(basis, boundary_conditions=boundary_conditions)
-    H = hamiltonian.construct_hamiltonian_matrix(t=t, U=U)
-    run_checks = True
-    if run_checks is True:
-        H_np = H.toarray()
-        assert (H_np == H_np.T.conj()).all(), "Hamiltonian is not Hermitian!"
-    print("Hamiltonian matrix (in CSR format):")
-    print(H)
+    
+    # fix t to one and vary U
+    U_list = np.linspace(-10, 10, 100)
+    energies = []
+    for i, Ut in enumerate(U_list):
+        H = hamiltonian.construct_hamiltonian_matrix(t=1.0, U=Ut)
+        # Diagonalize the Hamiltonian
+        eigenvalues, eigenvectors = eigsh(H, k=1, which='SA') 
+        energies.append(eigenvalues[0])
+        if i % 10 == 0:
+            print(f"Lowest eigenvalue for U={Ut:.2f}: {eigenvalues[0]:.2f}")
+    energies_per_site = np.array(energies) / L
 
-    # Diagonalize the Hamiltonian
-    eigenvalues, eigenvectors = eigsh(H, k=1, which='SA') 
-    print(f"Lowest eigenvalue:\n{eigenvalues[0]}")
-    print(f"Corresponding eigenvector:\n{eigenvectors[:,0]}")
+    # plot results
+    plt.plot(U_list, energies_per_site)
+    plt.xlabel("U")
+    plt.ylabel("Energy per site")
+    plt.title("Ground state energy per site vs U")
+    plt.show()
 
 
 if __name__ == "__main__":
     args = parse_arguments()
+    start = time.time()
     main(**args)
+    end = time.time()
+    print(f"Execution time: {end - start} seconds")
