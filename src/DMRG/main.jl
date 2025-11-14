@@ -1,25 +1,17 @@
 using ITensors
 
+# Define indices
+i = Index(3)
+j = Index(3)
+k = Index(3)
 
-# Create some example ITensor indices
-i = @show Index(3)
-j = @show Index(3)
-k = @show Index(4)
-# l = @show Index(3)
+T = randomITensor(i, j, k)
+Q,R = qr(T, (i, j))
 
-# Create an ITensor with the given indices
-A = randomITensor(i, j)
-B = randomITensor(i, j)
+@show T
+@show Q
+@show R
 
-Ap = prime(A,i)
-@show A
-@show Ap
-@show B
+@assert isapprox(Q*R, T)
 
-C = Ap * B
-@show C
 
-# B = ITensor(j, i)
-# C = ITensor(l, j, k)
-
-# D = @show A * B * C

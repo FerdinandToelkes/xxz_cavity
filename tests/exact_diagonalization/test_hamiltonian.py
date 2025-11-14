@@ -4,7 +4,7 @@ from src.exact_diagonalization.basis import Basis
 def test_hamiltonian_construction_pbc():
     basis = Basis(4, 2)  # 4 sites, 2 particles
     hamiltonian = Hamiltonian(basis, boundary_conditions="periodic")
-    H = hamiltonian.construct_hamiltonian_matrix(t=1.0, U=2.0)
+    H = hamiltonian.construct_hamiltonian_matrix(t=1.0, U=2.0, omega=0)
 
     # see notes on tablet
     hopping_matrix = [
@@ -42,7 +42,7 @@ def test_hamiltonian_construction_pbc():
             assert H[i, j] == full_matrix[i][j]
 
     # Now test with different t and U
-    H = hamiltonian.construct_hamiltonian_matrix(t=-3.0, U=-4.0)
+    H = hamiltonian.construct_hamiltonian_matrix(t=-3.0, U=-4.0, omega=0)
 
     full_matrix = [
         [-4.0,  3.0,  0.0,  0.0, -3.0,  0.0],
@@ -60,7 +60,7 @@ def test_hamiltonian_construction_pbc():
 def test_hamiltonian_construction_obc():
     basis = Basis(4, 2)  # 4 sites, 2 particles
     hamiltonian = Hamiltonian(basis, boundary_conditions="open")
-    H = hamiltonian.construct_hamiltonian_matrix(t=-1.0, U=2.0)
+    H = hamiltonian.construct_hamiltonian_matrix(t=-1.0, U=2.0, omega=0)
 
     # without t and U specified
     hopping_matrix = [

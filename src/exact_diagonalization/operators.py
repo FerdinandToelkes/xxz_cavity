@@ -1,3 +1,5 @@
+import numpy as np
+
 from src.exact_diagonalization.utils import circular_right_shift
 
 def count_pairs(n: int, d: int, width: int, boundary_conditions: str = "periodic") -> int:
@@ -55,66 +57,101 @@ def count_bits_between(x: int, i: int, j: int, inclusive: bool = True) -> int:
 
     return (x & mask).bit_count()
 
+# not used up to now, but here for completeness
 
-def fermion_creator(n: int, i: int, width: int) -> tuple[int, int]:
+def photon_creator(state: tuple[float, int], max_photons: int) -> tuple[float, int]:
+    """
+    Apply photon creation operator on state n.
+    Args:
+        state (tuple[float, int]): The tuple representing the current state (prefactor, photon number).
+        max_photons (int): The maximum allowed photon number.
+    Returns:
+        tuple[float, int]: The coefficient and the new photon number state after applying the creation operator, or (0, 0) if max_photons is reached.
+    """
+    prefactor, n = state
+    if n >= max_photons:
+        return 0, 0
+    else:
+        return prefactor * np.sqrt(n + 1), n + 1
+    
+def photon_annihilator(state: tuple[float, int]) -> tuple[float, int]:
+    """
+    Apply photon annihilation operator on state n.
+    Args:
+        state (tuple[float, int]): The tuple representing the current state (prefactor, photon number).
+    Returns:
+        tuple[float, int]: The coefficient and the new photon number state after applying the annihilation operator, or (0, 0) if n is zero.
+    """
+    prefactor, n = state
+    if n == 0:
+        return 0, 0
+    else:
+        return prefactor * np.sqrt(n), n - 1
+
+def fermion_creator(state: tuple[float, int], i: int, width: int) -> tuple[float, int]:
     """
     Apply creation operator at site i on state n.
     Args:
-        n (int): The integer representing the current state.
+        state (tuple[float, int]): The tuple representing the current state (prefactor, basis state).
         i (int): The site index where the creation operator is applied.
         width (int): The bit-width to consider.
     Returns:
-        tuple[int, int]: The sign and the new basis state after applying the creation operator, or (0, 0) if the site is already occupied.
+        tuple[float, int]: The prefactor and the new basis state after applying the creation operator, or (0, 0) if the site is already occupied.
     """
+    prefactor, n = state
     if n & (1 << i) != 0:
         # site already occupied
         return 0, 0
     else:
-        # sign = sum_{i>j} b_i for |s> = |b_{width-1} ... b_0>
-        sign = (-1) ** count_bits_between(n, i+1, width, inclusive=False)
-        return sign, flip_bit(n, i)
+        # prefactor = current_prefactor * (-1) ** sum_{i>j} b_i for |s> = |b_{width-1} ... b_0>
+        prefactor = prefactor * (-1) ** count_bits_between(n, i+1, width, inclusive=False)
+        return prefactor, flip_bit(n, i)
     
-def fermion_annihilator(n: int, i: int, width: int) -> tuple[int, int]:
+def fermion_annihilator(state: tuple[float, int], i: int, width: int) -> tuple[float, int]:
     """
     Apply annihilation operator at site i on state n.
     Args:
-        n (int): The integer representing the current state.
+        state (tuple[float, int]): The tuple representing the current state (prefactor, basis state).
         i (int): The site index where the annihilation operator is applied.
         width (int): The bit-width to consider.
     Returns:
-        tuple[int, int]: The sign and the new basis state after applying the annihilation operator, or (0, 0) if the site is unoccupied.
+        tuple[float, int]: The prefactor and the new basis state after applying the annihilation operator, or (0, 0) if the site is unoccupied.
     """
+    prefactor, n = state
     if n & (1 << i) == 0:
         # site unoccupied
         return 0, 0
     else:
-        # sign = sum_{i>j} b_i for |s> = |b_{width-1} ... b_0>
-        sign = (-1) ** count_bits_between(n, i+1, width, inclusive=False)
-        return sign, flip_bit(n, i)
+        # prefactor = current_prefactor * (-1) ** sum_{i>j} b_i for |s> = |b_{width-1} ... b_0>
+        prefactor = prefactor * (-1) ** count_bits_between(n, i+1, width, inclusive=False)
+        return prefactor, flip_bit(n, i)
     
-def number_operator(n: int, i: int) -> tuple[int, int]:
+def fermion_number_operator(state: tuple[float, int], i: int) -> tuple[float, int]:
     """
     Apply number operator at site i on state n. Note, this operator is diagonal in the occupation basis.
     Args:
-        n (int): The integer representing the current state.
+        state (tuple[float, int]): The tuple representing the current state (prefactor, basis state).
         i (int): The site index where the number operator is applied.
     Returns:
-        tuple[int, int]: The occupation number (0 or 1) and the new basis state after applying the number operator.
+        tuple[float, int]: The occupation number (0 or 1) and the new basis state after applying the number operator.
     """
+    prefactor, n = state
     n_i = (n >> i) & 1
-    return (n_i, n_i*n)
+    return (prefactor * n_i, n_i*n)
 
-def total_number_operator(n: int, width: int) -> tuple[int, int]:
+def total_fermion_number_operator(state: tuple[float, int], width: int) -> tuple[float, int]:
     """
     Apply total number operator on state n, with N = sum_i n_i. Note, this operator is diagonal in the occupation basis.
     Args:
-        n (int): The integer representing the current state.
+        state (tuple[float, int]): The tuple representing the current state (prefactor, basis state).
         width (int): The bit-width to consider.
     Returns:
-        tuple[int, int]: The total number of occupied sites and the new basis state after applying the total number operator.
+        tuple[float, int]: The total number of occupied sites and the new basis state after applying the total number operator.
     """
+    prefactor, n = state
     # ensure that we only count bits within the specified width
     mask = (1 << width) - 1
     N = (n & mask).bit_count()
     final_state = 0 if N == 0 else n
-    return (N, final_state)
+    return (prefactor * N, final_state)
+

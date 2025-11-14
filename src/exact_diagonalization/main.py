@@ -26,22 +26,30 @@ def main(L: int, N: int, t: float, U: float, boundary_conditions: str):
     hamiltonian = Hamiltonian(basis, boundary_conditions=boundary_conditions)
     
     # fix t to one and vary U
-    U_list = np.linspace(-10, 10, 100)
-    energies = []
+    U_list = np.linspace(-2, 20, 100)
+    k = 3
+    energies = {f"E_{i}": [] for i in range(k)}  # store lowest k eigenvalues
     for i, Ut in enumerate(U_list):
-        H = hamiltonian.construct_hamiltonian_matrix(t=1.0, U=Ut)
+        H = hamiltonian.construct_hamiltonian_matrix(t=1.0, U=Ut, omega=0)
         # Diagonalize the Hamiltonian
-        eigenvalues, eigenvectors = eigsh(H, k=1, which='SA') 
-        energies.append(eigenvalues[0])
+        eigenvalues, eigenvectors = eigsh(H, k=k, which='SA') 
+        for j in range(k):
+            energies[f"E_{j}"].append(eigenvalues[j])
         if i % 10 == 0:
             print(f"Lowest eigenvalue for U={Ut:.2f}: {eigenvalues[0]:.2f}")
-    energies_per_site = np.array(energies) / L
+    energies_per_site = {key: np.array(val) / L for key, val in energies.items()}
+
+    # print first 10 energies
+    for key, energy in energies.items():
+        print(f"{key}: {energy[:10]}")
 
     # plot results
-    plt.plot(U_list, energies_per_site)
+    for key, energy in energies_per_site.items():
+        plt.plot(U_list, energy, label=key)
     plt.xlabel("U")
     plt.ylabel("Energy per site")
     plt.title("Ground state energy per site vs U")
+    plt.legend()
     plt.show()
 
 
