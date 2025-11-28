@@ -57,6 +57,8 @@ def count_bits_between(x: int, i: int, j: int, inclusive: bool = True) -> int:
 
     return (x & mask).bit_count()
 
+
+
 # not used up to now, but here for completeness
 
 def photon_creator(state: tuple[float, int], max_photons: int) -> tuple[float, int]:
