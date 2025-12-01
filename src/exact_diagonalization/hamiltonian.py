@@ -7,12 +7,12 @@ from src.exact_diagonalization.basis import Basis
 from src.exact_diagonalization.operators import count_pairs, flip_bit
 from src.exact_diagonalization.utils import is_hermitian
 
-# TODO: Try constructing full Hamiltonian via tensor products of photonic and fermionic parts and compare performance
 class Hamiltonian:
     """
     Class to construct the Hamiltonian matrix for a given basis, hopping term t, and interaction term U.
     Attributes:
         basis (Basis): The basis object containing the states.
+        g (float): The light-matter coupling strength.
         boundary_conditions (str): The type of boundary conditions ("periodic" or "open").
     """
 
@@ -33,8 +33,6 @@ class Hamiltonian:
         assert is_hermitian(self.interaction_matrix), "Interaction matrix is not Hermitian!"
         assert is_hermitian(self.photon_energy_matrix), "Photon energy matrix is not Hermitian!"
         
-
-    
 
     def construct_interaction_matrix(self) -> csr_matrix:
         """
@@ -58,8 +56,7 @@ class Hamiltonian:
         # convert to csr for efficient diagonalization etc.
         return csr_matrix(H)
 
-    
-    
+      
     def construct_photon_energy_matrix(self) -> csr_matrix:
         """
         Construct the interaction part of the Hamiltonian matrix for the given basis.
@@ -89,38 +86,38 @@ class Hamiltonian:
         L = self.basis.L
         N_f = self.basis.N_f
         dim_el = self.dim_el
-        H_el = lil_matrix((dim_el, dim_el), dtype=float)
+        H_el_site_to_next_site = lil_matrix((dim_el, dim_el), dtype=float)
 
-        # Off-diagonal terms: hopping
+        # note that we only construct hopping from site to next_site, the Hermitian conjugate is added later
         for k, state in enumerate(self.basis.fermion_states):
             for site in range(L - 1 + int(self.periodic)):
                 next_site = (site + 1) % L 
 
                 # Check if we can hop from site to next_site (site occupied, next_site empty)
                 if ((state >> site) & 1) == 1 and ((state >> next_site) & 1) == 0:
-                    new_state = state
-                    
                     # Remove particle from current site and add to next site
+                    new_state = state
                     new_state = flip_bit(new_state, site)       
                     new_state = flip_bit(new_state, next_site)
                     # Only sign change due to hopping over boundary if periodic
                     # see notes on tablet for proof
                     sign = (-1)**(N_f - 1) if next_site < site else 1
                     k_prime = self.basis.fermion_state_index(new_state)
-                    H_el[k, k_prime] += (-1) * sign # multiply with t later
-                    # also take Hermitian conjugate into account since we only consider hopping in one direction
-                    H_el[k_prime, k] += (-1) * sign 
+                    H_el_site_to_next_site[k, k_prime] += (-1) * sign # multiply with t later
+                    
 
-        # for now pretend that photonic part is identity
-        # H_ph = identity(self.dim_ph, format='csr')
+        # construct full hopping matrix via Kronecker product with photonic part
         H_ph = self.construct_peierls_phase_matrix()
-        H = kron(H_el, H_ph, format='csr')
-        # convert to csr for efficient diagonalization etc.
-        return csr_matrix(H)
+        H_site_to_next_site = kron(H_el_site_to_next_site, H_ph, format='csr')
+        H_site_to_next_site = csr_matrix(H_site_to_next_site)
+        # add Hermitian conjugate (hopping from next_site to site)
+        H = H_site_to_next_site + H_site_to_next_site.getH()
+        return H
     
     def construct_peierls_phase_matrix(self) -> csr_matrix:
         """
-        Construct the Peierls phase part of the Hamiltonian matrix for the given photonic basis.
+        Construct the Peierls phase part exp(ig(a + a^+)) of the Hamiltonian matrix for the given photonic basis.
+        Note that we obtain exp(-ig(a + a^+)) as the Hermitian conjugate.
 
         Returns:
             csr_matrix: The Peierls phase matrix as a sparse CSR matrix.
@@ -129,7 +126,7 @@ class Hamiltonian:
         diags = np.zeros(self.dim_ph)
         off_diag = np.sqrt(np.arange(1, self.dim_ph)) # i.e. from 1 to N_ph-1
         
-        # diagonalize a + a^\dagger =: A
+        # diagonalize a + a^\dagger =: A which is tridiagonal in the number basis
         eigenvals, eigenvecs = eigh_tridiagonal(diags, off_diag)
 
         # write A = V D V^\dagger with D diagonal matrix of eigenvals and V matrix of eigenvecs
@@ -157,17 +154,17 @@ class Hamiltonian:
 
 
 if __name__ == "__main__":
-    from exact_diagonalization.slow_hamiltonian import Hamiltonian as BaseHamiltonian
+    from src.exact_diagonalization.slow_hamiltonian import Hamiltonian as BaseHamiltonian
 
     # simple test
     L = 16
     N_f = L // 2
     N_ph = 10
-    g = 0
+    g = np.pi / 2
     basis = Basis(L, N_f, N_ph)
-    bc = "periodic"
+    bc = "open"
     hamiltonian = Hamiltonian(basis, g, boundary_conditions=bc)
-    base_hamiltonian = BaseHamiltonian(basis, boundary_conditions=bc)
+   
     
     # compare construction times for fancy and normal interaction matrix
     import time
@@ -177,9 +174,12 @@ if __name__ == "__main__":
 
     print(f"Fancy interaction matrix construction time: {end - start:.6f} seconds")
     print(f"Shape of fancy interaction matrix: {H_fancy.shape}")
-
+    # H_fancy = H_fancy.todense()
+    # # print with only 2 decimal places
+    # np.set_printoptions(precision=2, suppress=True)
+    # print(f"H_fancy:\n{H_fancy}")
     
-
+    base_hamiltonian = BaseHamiltonian(basis, boundary_conditions=bc)
     start = time.time()
     H_normal = base_hamiltonian.construct_hopping_matrix()
     end = time.time()
