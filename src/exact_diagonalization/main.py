@@ -23,13 +23,14 @@ def parse_arguments():
 
 
 
+
+
+
+
 def main(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, boundary_conditions: str):
     basis = Basis(L, N_f, N_ph)  # L sites, N particles
     hamiltonian = Hamiltonian(basis, g=g, boundary_conditions=boundary_conditions)
     
-    # print(f"Interaction hamiltonian:\n{hamiltonian.interaction_matrix}")
-    # print(f"Photon hamiltonian:\n{hamiltonian.photon_energy_matrix}")
-    # print(f"Hopping hamiltonian:\n{hamiltonian.hopping_matrix}")
 
     # fix t to one and vary U
     U_list = np.linspace(-2, 20, 100)
