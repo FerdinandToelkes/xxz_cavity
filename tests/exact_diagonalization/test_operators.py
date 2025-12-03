@@ -1,7 +1,7 @@
 import pytest
-from numpy.testing import assert_allclose
+# from numpy.testing import assert_allclose
 
-from src.exact_diagonalization.operators import count_pairs, flip_bit, count_bits_between, construct_photon_number_matrix
+from src.exact_diagonalization.operators import count_pairs, flip_bit, count_bits_between, build_photon_number_matrix
 #, fermion_creator, fermion_annihilator, fermion_number_operator, total_fermion_number_operator 
 from src.exact_diagonalization.basis import Basis    
 
@@ -65,9 +65,9 @@ def test_count_bits_between_invalid_indices():
     (3, 1, 2, [0, 1, 2, 0, 1, 2, 0, 1, 2]),
     (3, 2, 2, [0, 1, 2, 0, 1, 2, 0, 1, 2]),
 ])
-def test_construct_photon_number_matrix(L: int, N_f: int, N_ph: int, expected_diag: list[int]):
+def test_build_photon_number_matrix(L: int, N_f: int, N_ph: int, expected_diag: list[int]):
     basis = Basis(L, N_f, N_ph)  
-    photon_number_matrix = construct_photon_number_matrix(basis)
+    photon_number_matrix = build_photon_number_matrix(basis)
     for i in range(len(basis)):
         assert photon_number_matrix[i, i] == expected_diag[i]
 

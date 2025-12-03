@@ -66,7 +66,7 @@ def count_bits_between(x: int, i: int, j: int, width: int, inclusive: bool = Tru
 
     return (x & mask).bit_count()
 
-def construct_photon_number_matrix(basis: Basis) -> csr_matrix:
+def build_photon_number_matrix(basis: Basis) -> csr_matrix:
     """
     Construct the photon number operator matrix for a given maximum photon number N_ph.
     Note, that dim(photon basis) = N_ph + 1.

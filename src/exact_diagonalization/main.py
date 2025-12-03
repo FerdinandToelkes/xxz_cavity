@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from scipy.sparse.linalg import eigsh 
 
-from src.exact_diagonalization.hamiltonian import Hamiltonian
+from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
 from src.exact_diagonalization.basis import Basis
 
 
@@ -29,7 +29,7 @@ def parse_arguments():
 
 def main(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, boundary_conditions: str):
     basis = Basis(L, N_f, N_ph)  # L sites, N particles
-    hamiltonian = Hamiltonian(basis, g=g, boundary_conditions=boundary_conditions)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions=boundary_conditions)
     
 
     # fix t to one and vary U
@@ -38,7 +38,7 @@ def main(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, boundary_con
     k = 3
     energies = {f"E_{i}": [] for i in range(k)}  # store lowest k eigenvalues
     for i, Ut in enumerate(U_list):
-        H = hamiltonian.construct_hamiltonian_matrix(t=t, U=Ut, omega=1)
+        H = builder.build_hamiltonian_matrix(t=t, U=Ut, omega=1)
         
         # Diagonalize the Hamiltonian
         eigenvalues, eigenvectors = eigsh(H, k=k, which='SA') 

@@ -4,10 +4,10 @@ from scipy.linalg import eigh_tridiagonal
 
 
 from src.exact_diagonalization.basis import Basis
-from src.exact_diagonalization.operators import count_pairs, flip_bit, construct_photon_number_matrix
+from src.exact_diagonalization.operators import count_pairs, flip_bit, build_photon_number_matrix
 from src.exact_diagonalization.utils import is_hermitian
 
-class Hamiltonian:
+class HamiltonianBuilder:
     """
     Class to construct the Hamiltonian matrix for a given basis, hopping term t, and interaction term U.
     Attributes:
@@ -16,25 +16,29 @@ class Hamiltonian:
         boundary_conditions (str): The type of boundary conditions ("periodic" or "open").
     """
 
-    def __init__(self, basis: Basis, g: float = 0, boundary_conditions: str = "periodic"):
-        if basis.L <= 2 and boundary_conditions == "periodic":
-            raise ValueError("Periodic boundary conditions are not well-defined for L <= 2.")
+    def __init__(self, basis: Basis, g: float = 0.0, boundary_conditions: str = "periodic"):
+        # ---- 1. Validate input -----------------------------------------------------
+        L = basis.L
+
+        if boundary_conditions not in ("periodic", "open"):
+            raise ValueError(f"Unknown boundary conditions '{boundary_conditions}'. Use 'periodic' or 'open'.")
+
+        if L <= 2 and boundary_conditions == "periodic":
+            raise ValueError(
+                f"Periodic boundary conditions require L >= 3 sites, got L={L}."
+            )
+
+        # ---- 2. Assign basic attributes -------------------------------------------
         self.basis = basis
         self.g = g
         self.boundary_conditions = boundary_conditions
-        self.periodic = boundary_conditions == "periodic"
-        self.dim_el = len(self.basis.fermion_states)
-        self.dim_ph = len(self.basis.photon_states)
-        
-        self.hopping_matrix = self.construct_hopping_matrix()
-        self.interaction_matrix = self.construct_interaction_matrix()
-        self.photon_energy_matrix = construct_photon_number_matrix(self.basis)
-        assert is_hermitian(self.hopping_matrix), "Hopping matrix is not Hermitian!"
-        assert is_hermitian(self.interaction_matrix), "Interaction matrix is not Hermitian!"
-        assert is_hermitian(self.photon_energy_matrix), "Photon energy matrix is not Hermitian!"
-        
+        self.periodic = (boundary_conditions == "periodic")
 
-    def construct_interaction_matrix(self) -> csr_matrix:
+        self.dim_el = len(basis.fermion_states)
+        self.dim_ph = len(basis.photon_states)
+
+
+    def build_interaction_matrix(self) -> csr_matrix:
         """
         Construct the interaction part of the Hamiltonian matrix for the given basis.
         Note that this implementation uses Kronecker products to build the full Hamiltonian
@@ -57,7 +61,7 @@ class Hamiltonian:
         return csr_matrix(H)
 
     
-    def construct_hopping_matrix(self) -> csr_matrix:
+    def build_hopping_matrix(self) -> csr_matrix:
         """
         Construct the hopping part of the Hamiltonian matrix for the given basis.
         Returns:
@@ -87,7 +91,7 @@ class Hamiltonian:
                     H_el_next_site_to_site[k_prime, k] += (-1) * sign # multiply with t later
                     
         # construct full hopping matrix via Kronecker product with photonic part
-        H_ph = self.construct_peierls_phase_matrix()
+        H_ph = self.build_peierls_phase_matrix()
         H_next_site_to_site = kron(H_el_next_site_to_site, H_ph, format='csr')
         H_next_site_to_site = csr_matrix(H_next_site_to_site)
         # add Hermitian conjugate (hopping from next_site to site)
@@ -95,7 +99,7 @@ class Hamiltonian:
         return H
     
     
-    def construct_peierls_phase_matrix(self) -> csr_matrix:
+    def build_peierls_phase_matrix(self) -> csr_matrix:
         """
         Construct the Peierls phase part exp(ig(a + a^+)) of the Hamiltonian matrix for the given photonic basis.
         Note that we obtain exp(-ig(a + a^+)) as the Hermitian conjugate.
@@ -117,19 +121,30 @@ class Hamiltonian:
         return csr_matrix(U)
 
 
-    def construct_hamiltonian_matrix(self, t: float, U: float, omega: float) -> csr_matrix:
+    def build_hamiltonian_matrix(self, t: float, U: float, omega: float, hopping_matrix: csr_matrix|None = None,
+                                     interaction_matrix: csr_matrix|None = None, photon_energy_matrix: csr_matrix|None = None) -> csr_matrix:
         """
-        Construct the Hamiltonian matrix for the given basis, hopping term t, and interaction term U from hopping and interaction matrices.
+        Construct all necessary matrices to build the Hamiltonian for the given basis, hopping term t, interaction term U, coupling g, and photon frequency omega.
         Returns:
             csr_matrix: The Hamiltonian matrix as a sparse CSR matrix.
         """
-        H_hopping = self.construct_hopping_matrix()
-        H_interaction = self.construct_interaction_matrix()
-        if self.basis.N_ph == 0 or omega == 0:
-            H = t * H_hopping + U * H_interaction
-        else:
-            H_photon = construct_photon_number_matrix(self.basis)
-            H = t * H_hopping + U * H_interaction + omega * H_photon
+        self.hopping_matrix = hopping_matrix if hopping_matrix is not None else self.build_hopping_matrix()
+        if not is_hermitian(self.hopping_matrix):
+            raise ValueError("Hopping matrix is not Hermitian.")
+        self.interaction_matrix = interaction_matrix if interaction_matrix is not None else self.build_interaction_matrix()
+        if not is_hermitian(self.interaction_matrix):
+            raise ValueError("Interaction matrix is not Hermitian.")
+        
+        # build full Hamiltonian
+        H = t * self.hopping_matrix + U * self.interaction_matrix
+
+        # add omega a_dag a term if photons are present
+        if self.basis.N_ph != 0 and omega != 0:
+            self.photon_energy_matrix = photon_energy_matrix if photon_energy_matrix is not None else build_photon_number_matrix(self.basis)
+            if not is_hermitian(self.photon_energy_matrix):
+                raise ValueError("Photon energy matrix is not Hermitian.")
+            
+            H += omega * self.photon_energy_matrix
         return H
     
 
@@ -150,7 +165,7 @@ class Hamiltonian:
 #     # compare construction times for fancy and normal interaction matrix
 #     import time
 #     start = time.time()
-#     H_fancy = hamiltonian.construct_hopping_matrix()
+#     H_fancy = hamiltonian.build_hopping_matrix()
 #     end = time.time()
 
 #     print(f"Fancy interaction matrix construction time: {end - start:.6f} seconds")
@@ -162,7 +177,7 @@ class Hamiltonian:
     
 #     base_hamiltonian = BaseHamiltonian(basis, boundary_conditions=bc)
 #     start = time.time()
-#     H_normal = base_hamiltonian.construct_hopping_matrix()
+#     H_normal = base_hamiltonian.build_hopping_matrix()
 #     end = time.time()
 #     print(f"Normal interaction matrix construction time: {end - start:.6f} seconds")
 #     print(f"Shape of normal interaction matrix: {H_normal.shape}")

@@ -2,24 +2,25 @@ import numpy as np
 import pytest
 
 from numpy.testing import assert_allclose
+from scipy.sparse import csr_matrix
 
-from src.exact_diagonalization.hamiltonian import Hamiltonian
+from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
 from src.exact_diagonalization.basis import Basis
 
 def test_hamiltonian_invalid_boundary_conditions():
     basis = Basis(2, 2)  # 2 sites, 2 particles
     with pytest.raises(ValueError):
-        Hamiltonian(basis, boundary_conditions="invalid_bc")
+        HamiltonianBuilder(basis, boundary_conditions="invalid_bc")
         
     with pytest.raises(ValueError):
-        Hamiltonian(basis, boundary_conditions="periodic") # not valid for two sites
+        HamiltonianBuilder(basis, boundary_conditions="periodic") # not valid for two sites
 
 @pytest.mark.parametrize("t", [-3, 1, 2])
 @pytest.mark.parametrize("U", [-4, -1, 3])
 def test_hamiltonian_construction_pbc_without_light_matter(t: float, U: float, atol: float = 1e-14):
     basis = Basis(4, 2)  # 4 sites, 2 particles
-    hamiltonian = Hamiltonian(basis, g=0, boundary_conditions="periodic")
-    H = hamiltonian.construct_hamiltonian_matrix(t, U, omega=0)
+    builder = HamiltonianBuilder(basis, g=0, boundary_conditions="periodic")
+    H = builder.build_hamiltonian_matrix(t, U, omega=0)
 
     # see notes on tablet
     expected_hopping_matrix = np.array([
@@ -42,8 +43,8 @@ def test_hamiltonian_construction_pbc_without_light_matter(t: float, U: float, a
     ])
 
     full_expected_matrix = expected_hopping_matrix * t + expected_interaction_matrix * U
-    hopping_matrix = hamiltonian.hopping_matrix
-    interaction_matrix = hamiltonian.interaction_matrix
+    hopping_matrix = builder.hopping_matrix
+    interaction_matrix = builder.interaction_matrix
 
     # hermitian check
     assert_allclose(hopping_matrix.toarray(), hopping_matrix.getH().toarray(), rtol=0, atol=atol)
@@ -59,8 +60,8 @@ def test_hamiltonian_construction_pbc_without_light_matter(t: float, U: float, a
 @pytest.mark.parametrize("U", [-4, -1, 3])
 def test_hamiltonian_construction_obc_without_light_matter(t: float, U: float, atol: float = 1e-14):
     basis = Basis(4, 2)  # 4 sites, 2 particles
-    hamiltonian = Hamiltonian(basis, g=0, boundary_conditions="open")
-    H = hamiltonian.construct_hamiltonian_matrix(t, U, omega=0)
+    builder = HamiltonianBuilder(basis, g=0, boundary_conditions="open")
+    H = builder.build_hamiltonian_matrix(t, U, omega=0)
 
     # without t and U specified
     expected_hopping_matrix = np.array([
@@ -83,8 +84,8 @@ def test_hamiltonian_construction_obc_without_light_matter(t: float, U: float, a
     ])
 
     full_expected_matrix = t * expected_hopping_matrix + U * expected_interaction_matrix
-    hopping_matrix = hamiltonian.hopping_matrix
-    interaction_matrix = hamiltonian.interaction_matrix
+    hopping_matrix = builder.hopping_matrix
+    interaction_matrix = builder.interaction_matrix
 
     # hermitian check
     assert_allclose(hopping_matrix.toarray(), hopping_matrix.getH().toarray(), rtol=0, atol=atol)
@@ -96,7 +97,29 @@ def test_hamiltonian_construction_obc_without_light_matter(t: float, U: float, a
     assert_allclose(interaction_matrix.toarray(), expected_interaction_matrix, rtol=0, atol=atol)
     assert_allclose(H.toarray(), full_expected_matrix, rtol=0, atol=atol)
 
+def test_hamiltonian_construction_non_hermitian_interaction_matrix():
+    basis = Basis(2, 1)  # 2 sites, 1 particle
+    builder = HamiltonianBuilder(basis, g=0, boundary_conditions="open")
+    # create non-hermitian interaction matrix
+    non_hermitian_interaction_matrix = csr_matrix(np.array([[0, 1], [0, 0]]))
+    with pytest.raises(ValueError):
+        builder.build_hamiltonian_matrix(t=1.0, U=1.0, omega=0.0, interaction_matrix=non_hermitian_interaction_matrix)
 
+def test_hamiltonian_construction_non_hermitian_hopping_matrix():
+    basis = Basis(2, 1)  # 2 sites, 1 particle
+    builder = HamiltonianBuilder(basis, g=0, boundary_conditions="open")
+    # create non-hermitian hopping matrix
+    non_hermitian_hopping_matrix = csr_matrix(np.array([[0, 1], [0, 0]]))
+    with pytest.raises(ValueError):
+        builder.build_hamiltonian_matrix(t=1.0, U=1.0, omega=0.0, hopping_matrix=non_hermitian_hopping_matrix)
+
+def test_hamiltonian_construction_non_hermitian_photon_energy_matrix():
+    basis = Basis(2, 1, 1)  # 2 sites, 1 particle, max 1 photon
+    builder = HamiltonianBuilder(basis, g=0, boundary_conditions="open")
+    # create non-hermitian photon energy matrix
+    non_hermitian_photon_energy_matrix = csr_matrix(np.array([[0, 1], [0, 0]]))
+    with pytest.raises(ValueError):
+        builder.build_hamiltonian_matrix(t=1.0, U=1.0, omega=1.0, photon_energy_matrix=non_hermitian_photon_energy_matrix)
 
 @pytest.mark.parametrize("t", [-3, 2])
 @pytest.mark.parametrize("U", [1])
@@ -104,8 +127,8 @@ def test_hamiltonian_construction_obc_without_light_matter(t: float, U: float, a
 @pytest.mark.parametrize("omega", [1, 2])
 def test_hamiltonian_construction_obc_with_light_matter(t: float, U: float, g: float, omega: float, atol: float = 1e-14):
     basis = Basis(2, 1, 1)  # 2 sites, 1 particle, max 1 photon
-    hamiltonian = Hamiltonian(basis, g=g, boundary_conditions="open")
-    H = hamiltonian.construct_hamiltonian_matrix(t, U, omega)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="open")
+    H = builder.build_hamiltonian_matrix(t, U, omega)
 
     # expected matrices from tablet notes
     expected_hopping_matrix = -1 * np.array([
@@ -124,8 +147,8 @@ def test_hamiltonian_construction_obc_with_light_matter(t: float, U: float, g: f
     ])
     # no interaction term for 1 particle
     full_expected_matrix = t * expected_hopping_matrix + omega * expected_photon_energy_matrix
-    hopping_matrix = hamiltonian.hopping_matrix
-    photon_energy_matrix = hamiltonian.photon_energy_matrix
+    hopping_matrix = builder.hopping_matrix
+    photon_energy_matrix = builder.photon_energy_matrix
 
     # hermitian check
     assert_allclose(hopping_matrix.toarray(), hopping_matrix.getH().toarray(), rtol=0, atol=atol)
@@ -166,11 +189,11 @@ def expected_peierls_matrix(g: float, N_ph: int) -> np.ndarray:
 
 @pytest.mark.parametrize("N_ph", [1, 2])
 @pytest.mark.parametrize("g", [0, 1, np.pi/2, 2, np.pi, 4, 3*np.pi/2])
-def test_construct_peierls_phase_matrix(N_ph: int, g: float, atol: float = 1e-14):
+def test_build_peierls_phase_matrix(N_ph: int, g: float, atol: float = 1e-14):
     # max  N_ph photons (sites and particles don't matter here)
     basis = Basis(1, 0, N_ph)
-    H = Hamiltonian(basis, g=g, boundary_conditions="open")
-    P = H.construct_peierls_phase_matrix()
+    H = HamiltonianBuilder(basis, g=g, boundary_conditions="open")
+    P = H.build_peierls_phase_matrix()
 
     # compare with expected matrix
     expected = expected_peierls_matrix(g, N_ph)
