@@ -5,37 +5,48 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigsh
 
 from src.exact_diagonalization.basis import Basis
-from src.exact_diagonalization.operators import build_photon_number_matrix
-from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
+from src.exact_diagonalization.operators import build_photon_number_matrix, build_longest_range_fermion_number_matrix
+from src.exact_diagonalization.utils import is_hermitian
 
 class Analyzer:
-    def __init__(self, H: csr_matrix, basis: Basis):             
+    def __init__(self, H: csr_matrix, basis: Basis, boundary_conditions: str="periodic"):            
         self.H = H
         self.basis = basis 
         self.dim_el = len(basis.fermion_states)
         self.dim_ph = len(basis.photon_states)
-
+        self.boundary_conditions = boundary_conditions
         self.evals = None
         self.evecs = None
 
+        # TODO: check if it makes sense to precompute these here
         self.photon_number_matrix = build_photon_number_matrix(self.basis)
+        self.longest_range_fermion_number_matrix = build_longest_range_fermion_number_matrix(self.basis, self.boundary_conditions)
 
     def diagonalize(self, k: int) -> tuple[np.ndarray, np.ndarray]:
         """
         Diagonalize the Hamiltonian matrix H and return the lowest k eigenvalues and eigenvectors.
+        Please be sure that H is not already diagonalized when calling this method since
+        the Lanczos algorithm used here cannot deal nicely with already diagonal matrices.
         Arguments:
             H (csr_matrix): The Hamiltonian matrix to diagonalize.
             k (int): The number of lowest eigenvalues and eigenvectors to compute.
         Returns:
             evals (np.ndarray): The lowest k eigenvalues.
             evecs (np.ndarray): The corresponding eigenvectors.
+        Raises:
+            ValueError: If H is not Hermitian.
         """
+        # ensure that matrix is Hermitian
+        if not is_hermitian(self.H):
+            raise ValueError("Hamiltonian matrix H must be Hermitian.")
+        # get smallest algebraic eigenvalues, i.e. those with lowest real part
         self.evals, self.evecs = eigsh(self.H, k=k, which='SA')
         return self.evals, self.evecs
+
     
     def ground_state(self) -> np.ndarray:
         if self.evecs is None:
-            self.diagonalize(k=1)
+            self.evals, self.evecs = self.diagonalize(k=1)
         return self.evecs[:, 0] # type: ignore
 
     def build_psi_matrix(self, psi: np.ndarray) -> np.ndarray:
@@ -71,7 +82,7 @@ class Analyzer:
         
         return entropy
 
-    def expectation_value(self, psi: np.typing.NDArray[np.complex128], operator: np.ndarray) -> float:
+    def expectation_value(self, psi: np.typing.NDArray[np.complex128], operator: csr_matrix | np.ndarray) -> float:
         """
         Compute the expectation value of the photon number operator for a given state vector psi.
         Arguments:

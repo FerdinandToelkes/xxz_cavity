@@ -1,9 +1,13 @@
 import pytest
-# from numpy.testing import assert_allclose
 
-from src.exact_diagonalization.operators import count_pairs, flip_bit, count_bits_between, build_photon_number_matrix
+from scipy.sparse import triu
+
+
+from src.exact_diagonalization.operators import count_pairs, flip_bit, count_bits_between, check_if_bit_set, \
+    build_photon_number_matrix, build_fermion_number_matrix, build_longest_range_fermion_number_matrix
 #, fermion_creator, fermion_annihilator, fermion_number_operator, total_fermion_number_operator 
 from src.exact_diagonalization.basis import Basis    
+from tests.exact_diagonalization.utils import assert_allclose
 
 @pytest.mark.parametrize("n, d, width, boundary_conditions, expected_count", [
     (0b0, 1, 1, "periodic", 0),
@@ -35,6 +39,18 @@ def test_count_pairs_invalid_boundary_conditions():
 ])
 def test_flip_bit(n: int, i: int, expected: int):
     assert flip_bit(n, i) == expected
+
+
+@pytest.mark.parametrize("n, i, expected", [
+    (0b0000, 0, False),
+    (0b0001, 0, True),
+    (0b0010, 1, True),
+    (0b0000, 1, False),
+    (0b1010, 2, False),
+    (0b1110, 2, True),
+])
+def test_check_if_bit_set(n: int, i: int, expected: bool):
+    assert check_if_bit_set(n, i) == expected
 
 @pytest.mark.parametrize("x, i, j, width, inclusive, expected_count", [
     (0b0, 0, 0, 1, True, 0),
@@ -68,12 +84,70 @@ def test_count_bits_between_invalid_indices():
 def test_build_photon_number_matrix(L: int, N_f: int, N_ph: int, expected_diag: list[int]):
     basis = Basis(L, N_f, N_ph)  
     photon_number_matrix = build_photon_number_matrix(basis)
+    
+    # check diagonal elements
     for i in range(len(basis)):
         assert photon_number_matrix[i, i] == expected_diag[i]
 
- 
-    
+    # check hermiticity
+    assert_allclose(photon_number_matrix.toarray(), photon_number_matrix.getH().toarray())
 
+    # check that off-diagonal elements are zero
+    upper_triangle = triu(photon_number_matrix, k=1)
+    assert upper_triangle.nnz == 0
+
+
+@pytest.mark.parametrize("L, N_f, N_ph, boundary_conditions, expected_diag", [
+    (4, 2, 0, "periodic", [0, 1, 0, 0, 0, 0]),
+    (4, 2, 0, "open", [0, 0, 0, 1, 0, 0]),
+])
+def test_build_longest_range_fermion_number_matrix(L: int, N_f: int, N_ph: int, boundary_conditions: str, expected_diag: list[int]):
+    basis = Basis(L, N_f, N_ph)
+    longest_range_matrix = build_longest_range_fermion_number_matrix(basis, boundary_conditions)
+
+    # Check diagonal elements
+    for i in range(len(basis)):
+        assert longest_range_matrix[i, i] == expected_diag[i]
+
+    # check hermiticity
+    assert_allclose(longest_range_matrix.toarray(), longest_range_matrix.getH().toarray())
+
+    # check that off-diagonal elements are zero
+    upper_triangle = triu(longest_range_matrix, k=1)
+    assert upper_triangle.nnz == 0
+
+def test_build_longest_range_fermion_number_matrix_invalid_boundary_conditions():
+    basis = Basis(4, 2, 0)
+    with pytest.raises(ValueError):
+        build_longest_range_fermion_number_matrix(basis, "invalid")
+
+@pytest.mark.parametrize("L, N_f, N_ph, site, expected_diag", [
+    (4, 2, 0, 0, [1, 1, 0, 1, 0, 0]),
+    (4, 2, 0, 1, [1, 0, 1, 0, 1, 0]),
+    (4, 2, 0, 2, [0, 1, 1, 0, 0, 1]),
+    (4, 2, 0, 3, [0, 0, 0, 1, 1, 1]),
+])
+def test_build_fermion_number_matrix(L: int, N_f: int, N_ph: int, site: int, expected_diag: list[int]):
+    basis = Basis(L, N_f, N_ph)
+    fermion_number_matrix = build_fermion_number_matrix(basis, site)
+
+    # check diagonal elements
+    for i in range(len(basis)):
+        assert fermion_number_matrix[i, i] == expected_diag[i]
+
+    # check hermiticity
+    assert_allclose(fermion_number_matrix.toarray(), fermion_number_matrix.getH().toarray())
+
+    # check that off-diagonal elements are zero
+    upper_triangle = triu(fermion_number_matrix, k=1)
+    assert upper_triangle.nnz == 0
+
+def test_build_fermion_number_matrix_invalid_site():
+    basis = Basis(4, 2, 0)
+    with pytest.raises(ValueError):
+        build_fermion_number_matrix(basis, -1)
+    with pytest.raises(ValueError):
+        build_fermion_number_matrix(basis, 4)
 
 # tests of operators that are not currently used in the codebase 
 

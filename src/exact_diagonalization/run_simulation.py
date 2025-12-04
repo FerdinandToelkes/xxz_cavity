@@ -1,5 +1,8 @@
 import numpy as np
 
+# put this in a config file later
+ROOT_DATA_DIR = "data/xxz_cavity/exact_diagonalization/"
+
 def sweep_photon_number_vs_omega(self, omega_list: np.ndarray, t: float, U: float) -> np.ndarray:
     photon_numbers = []
     for omega in omega_list:

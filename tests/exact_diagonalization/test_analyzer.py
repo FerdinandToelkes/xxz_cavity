@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from numpy.testing import assert_allclose
+from scipy.sparse import csr_matrix
 
-from src.exact_diagonalization.analyzer import Analyzer
-from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
+from tests.exact_diagonalization.utils import assert_allclose
 from src.exact_diagonalization.basis import Basis
+from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
 from src.exact_diagonalization.analyzer import Analyzer
 
 
@@ -26,6 +26,17 @@ def test_diagonalize(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, 
     # Check the shapes of the returned eigenvalues and eigenvectors
     assert evals.shape == (k,) 
     assert evecs.shape == (H.get_shape()[0], k)
+
+def test_diagonalize_non_hermitian():
+    # Create a non-Hermitian matrix
+    H_non_hermitian = np.array([[1, 2], [3, 4]], dtype=complex)
+    H_non_hermitian_csr = csr_matrix(H_non_hermitian)
+
+    basis = Basis(2, 1)  # Dummy basis
+    analyzer = Analyzer(H_non_hermitian_csr, basis)
+
+    with pytest.raises(ValueError):
+        analyzer.diagonalize(k=1)
 
 
 @pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
@@ -48,7 +59,7 @@ def test_ground_state(L: int, N_f: int, N_ph: int, t: float, U: float, g: float,
     (6, 3, 3, 1.0, 4.0, 1.0, -2.0),
     (8, 4, 2, 1.0, -3.0, 0.0, 0.0),
 ])
-def test_build_psi_matrix(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float, atol: float = 1e-14):
+def test_build_psi_matrix(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float):
     """Check whether the assumption of having the basis in lexicographical order is valid in build_psi_matrix."""
     basis = Basis(L, N_f, N_ph)
     builder = HamiltonianBuilder(basis, g=g, boundary_conditions="periodic")
@@ -65,19 +76,42 @@ def test_build_psi_matrix(L: int, N_f: int, N_ph: int, t: float, U: float, g: fl
         expected_psi_matrix[idx_el, idx_ph] = psi[basis_idx]
 
     psi_matrix = analyzer.build_psi_matrix(psi)
-    assert_allclose(psi_matrix, expected_psi_matrix, atol=atol)
+    assert_allclose(psi_matrix, expected_psi_matrix)
 
-
-def test_entanglement_entropy_fermions_photons():
-    L = 4
-    N_f = 2
-    N_ph = 2
-    t = 1.0
-    U = 2.0
-    g = 0.5
-    omega = 1.0
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega, boundary_conditions", [
+    (2, 1, 3, 1.0, 2.0, 0.5, 1.0, "open"),
+    (4, 2, 2, 1.0, 2.0, 0.5, 1.0, "periodic"),
+    (6, 3, 3, 1.0, 4.0, 1.0, 2.0, "periodic"),
+    (8, 4, 4, 1.0, -1.0, 0.0, 0.0, "periodic"),
+])
+def test_entanglement_entropy_fermions_photons_minimal(L: int, N_f: int, N_ph: int, t: float, U: float, 
+                                                       g: float, omega: float, boundary_conditions: str):
     basis = Basis(L, N_f, N_ph)
-    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="periodic")
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions=boundary_conditions)
+    H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
+    analyzer = Analyzer(H, basis)
+
+    # Create a minimally entangled state between fermions and photons
+    dim_el = analyzer.dim_el
+    dim_ph = analyzer.dim_ph
+    psi = np.zeros(dim_el * dim_ph, dtype=complex)
+    # only set first element
+    psi[0] = 1 
+    
+    entropy = analyzer.entanglement_entropy_fermions_photons(psi)
+    expected_entropy = 0.0  # since only one component is non-zero
+    assert_allclose(entropy, expected_entropy)
+
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega, boundary_conditions", [
+    (2, 1, 3, 1.0, 2.0, 0.5, 1.0, "open"),
+    (4, 2, 2, 1.0, 2.0, 0.5, 1.0, "periodic"),
+    (6, 3, 3, 1.0, 4.0, 1.0, 2.0, "periodic"),
+    (8, 4, 4, 1.0, -1.0, 0.0, 0.0, "periodic"),
+])
+def test_entanglement_entropy_fermions_photons_maximal(L: int, N_f: int, N_ph: int, t: float, U: float, 
+                                                       g: float, omega: float, boundary_conditions: str):
+    basis = Basis(L, N_f, N_ph)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions=boundary_conditions)
     H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
     analyzer = Analyzer(H, basis)
 
@@ -85,19 +119,20 @@ def test_entanglement_entropy_fermions_photons():
     dim_el = analyzer.dim_el
     dim_ph = analyzer.dim_ph
     psi = np.zeros(dim_el * dim_ph, dtype=complex)
+    # ensure that when psi is built, this will be diagonal in the psi_matrix
     for i in range(min(dim_el, dim_ph)):
-        psi[i * dim_ph + i] = 1 / np.sqrt(min(dim_el, dim_ph))
+        basis_idx = i * dim_ph + i  
+        psi[basis_idx] = 1.0
+    psi /= np.linalg.norm(psi) # normalize
     
     entropy = analyzer.entanglement_entropy_fermions_photons(psi)
-    expected_entropy = np.log(min(dim_el, dim_ph))
-    assert np.isclose(entropy, expected_entropy), f"Expected {expected_entropy}, got {entropy}"
+    expected_entropy = np.log(min(dim_el, dim_ph))  # see e.g. Wikipedia page on entanglement entropy
+    assert_allclose(entropy, expected_entropy)
 
-
-# TODO: Go again over that test
 @pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
-    (4, 2, 2, 1.0, 2.0, 0.5, 1.0),
-    (6, 3, 3, 1.0, 5.0, 1.0, 2.0),
-    (8, 4, 4, 1.0, -1.0, 0.0, 0.0),
+    (4, 2, 2, 0, 0, 0, 0), # only dimensions matter since we set psi ourselves
+    (6, 3, 3, 0, 0, 0, 0),
+    (8, 4, 4, 0, 0, 0, 0),
 ])
 def test_expectation_value(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float):
     basis = Basis(L, N_f, N_ph)
@@ -118,29 +153,44 @@ def test_expectation_value(L: int, N_f: int, N_ph: int, t: float, U: float, g: f
     expected_expectation = 1.0  # since psi is normalized and operator is identity
     assert_allclose(expectation, expected_expectation)
 
-# TODO: Go again over that test
-def test_expectation_value_non_hermitian_operator():
-    L = 4
-    N_f = 2
-    N_ph = 2
-    t = 1.0
-    U = 2.0
-    g = 0.5
-    omega = 1.0
+@pytest.mark.parametrize("L, N_f, N_ph, omega, boundary_condition, expected_n_photon", [
+    (2, 1, 2, 1, "open", 0.0),
+    (4, 2, 4, -1, "periodic", 4.0),
+    (6, 3, 6, 1, "periodic", 0.0),
+    (8, 4, 8, -1, "open", 8.0),
+])
+def test_expectation_value_photon_number(L: int, N_f: int, N_ph: int, omega: float, boundary_condition: str, expected_n_photon: float):
+    # make simple non-diagonal Hamiltonian -> Lanczos doesn't work for good for already diagonal matrices 
+    t, U, g = 1.0, 0.0, 0.0
     basis = Basis(L, N_f, N_ph)
-    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="periodic")
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions=boundary_condition)
+    H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
+    analyzer = Analyzer(H=H, basis=basis)
+    # evals, evecs = analyzer.diagonalize(k=10)
+    ground_state = analyzer.ground_state()
+
+    # Define an operator (identity operator in this case)
+    operator = analyzer.photon_number_matrix
+
+    expectation = analyzer.expectation_value(ground_state, operator)
+    assert_allclose(expectation, expected_n_photon)
+
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
+    (2, 1, 0, 0, 0, 0, 0), # only dimensions matter since we set psi ourselves
+])
+def test_expectation_value_non_hermitian_operator(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float):
+    basis = Basis(L, N_f, N_ph)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="open")
     H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
     analyzer = Analyzer(H, basis)
 
     # Create a test state
     dim_el = analyzer.dim_el
     dim_ph = analyzer.dim_ph
-    psi = np.zeros(dim_el * dim_ph, dtype=complex)
-    for i in range(min(dim_el, dim_ph)):
-        psi[i * dim_ph + i] = 1 / np.sqrt(min(dim_el, dim_ph))
+    psi = np.ones(dim_el * dim_ph, dtype=complex)
+    psi /= np.linalg.norm(psi)  # normalize
 
-    # Define a non-hermitian operator
-    operator = np.array([[0, 1], [0, 0]], dtype=complex)
-
+    # Define a complex-valued, non-hermitian operator -> expectation value can be complex
+    operator = np.array([[0, 1j], [0, 0]], dtype=complex)
     with pytest.raises(ValueError):
         analyzer.expectation_value(psi, operator)

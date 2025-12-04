@@ -34,6 +34,12 @@ def flip_bit(n: int, i: int) -> int:
     """Flip bit i in integer n. Note: i starts from 0 (least significant bit)."""
     return n ^ (1 << i)
 
+def check_if_bit_set(n: int, i: int) -> bool:
+    """Check if bit i in integer n is set (1). Note: i starts from 0 (least significant bit).
+       Returns True if bit is set, False otherwise.
+    """
+    return (n & (1 << i)) != 0
+
 def count_bits_between(x: int, i: int, j: int, width: int, inclusive: bool = True) -> int:
     """
     Count the number of 1-bits in x between bit positions i and j (inclusive or exclusive).
@@ -79,11 +85,67 @@ def build_photon_number_matrix(basis: Basis) -> csr_matrix:
     dim_ph = len(basis.photon_states)
     # Build a diagonal array of photon energies since N|i> = i|i>
     diag = np.arange(0, dim_ph)
-    H_ph = diags(diag, format='csr')
-    H_el = identity(dim_el, format='csr')
-    H = kron(H_el, H_ph, format='csr')
+    op_ph = diags(diag, format='csr')
+    op_el = identity(dim_el, format='csr')
+    op = kron(op_el, op_ph, format='csr')
     # convert to csr for efficient diagonalization
-    return csr_matrix(H)
+    return csr_matrix(op)
+
+def build_fermion_number_matrix(basis: Basis, site: int) -> csr_matrix:
+    """
+    Construct the fermion number operator matrix n_i for a given basis.
+    Arguments:
+        basis (Basis): The basis object containing fermion states.
+        site (int): The site index i where the number operator is applied (0 <= i < L).
+    Returns:
+        csr_matrix: The fermion number operator matrix of shape (dim(basis), dim(basis)).
+    Raises:
+        ValueError: If site index is out of bounds.
+    """
+    if site < 0 or site >= basis.L:
+        raise ValueError(f"Site index {site} is out of bounds for basis with L={basis.L}.")
+    
+    dim_el = len(basis.fermion_states)
+    dim_ph = len(basis.photon_states)
+    diag = np.zeros(dim_el)
+    for idx, state in enumerate(basis.fermion_states):
+        if check_if_bit_set(state, site):
+            diag[idx] = 1
+    op_el = diags(diag, format='csr')
+    op_ph = identity(dim_ph, format='csr')
+    op = kron(op_el, op_ph, format='csr')
+    return csr_matrix(op)
+
+def build_longest_range_fermion_number_matrix(basis: Basis, boundary_conditions: str) -> csr_matrix:
+    """
+    Construct the "longest-range" fermion number operator matrix n_max = n_0 +*n_{l} for a given basis,
+    where l = L//2 for periodic boundary conditions and l = L-1 for open boundary conditions.
+    Arguments:
+        basis (Basis): The basis object containing fermion states.
+        boundary_conditions (str): The type of boundary condition to consider ("periodic" or "open").
+    Returns:
+        csr_matrix: The longest-range fermion number operator matrix of shape (dim(basis), dim(basis)).
+    Raises:
+        ValueError: If boundary condition is invalid.
+    """
+    if boundary_conditions == "periodic":
+        l = basis.L // 2 # since we start counting from 0
+    elif boundary_conditions == "open":
+        l = basis.L - 1
+    else:
+        raise ValueError("Invalid boundary condition. Use 'periodic' or 'open'.")
+    
+    dim_el = len(basis.fermion_states)
+    dim_ph = len(basis.photon_states)
+    diag = np.zeros(dim_el)
+    for idx, state in enumerate(basis.fermion_states):
+        n_0 = 1 if check_if_bit_set(state, 0) else 0
+        n_l = 1 if check_if_bit_set(state, l) else 0
+        diag[idx] = n_0 * n_l
+    op_el = diags(diag, format='csr')
+    op_ph = identity(dim_ph, format='csr')
+    op = kron(op_el, op_ph, format='csr')
+    return csr_matrix(op)
 
 
 # not used up to now, but here for completeness
