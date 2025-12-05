@@ -1,0 +1,10 @@
+
+
+
+# in order to nicely use the name of the method in the config
+name: exact_diagonalization
+
+#   # specify which observables to compute during the sweep
+#   observables:
+#     - photon_number
+#     - entanglement_entropy

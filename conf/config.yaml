@@ -1,0 +1,65 @@
+# Configuration file for the XXZ cavity model experiments
+# Lets see how I will structure the configuration settings :)
+
+
+defaults:
+  - method: exact_diagonalization
+  - _self_
+
+system:
+  L: 4 # number of lattice sites
+  N_f: null # number of fermions (null for half-filling)
+  N_ph: 2 # maximal number of photons in the cavity
+  boundary_conditions: "periodic"
+
+U_sweep:
+  photon_number:
+    parameters:
+      # Set the fixed parameters for the sweep
+      t: 1.0 # hopping amplitude
+      g: 0.5 # light-matter coupling strength
+      omega: 10.0 # cavity frequency
+      
+      # set range for U sweep
+      U_min: 0.0
+      U_max: 20.0
+      U_points: 100
+  
+  entanglement_entropy:
+    # take parameters from photon_number sweep
+    parameters:
+      t: ${U_sweep.photon_number.parameters.t}
+      g: ${U_sweep.photon_number.parameters.g}
+      omega: ${U_sweep.photon_number.parameters.omega}
+      
+      U_min: ${U_sweep.photon_number.parameters.U_min}
+      U_max: ${U_sweep.photon_number.parameters.U_max}
+      U_points: ${U_sweep.photon_number.parameters.U_points}
+
+omega_sweep:
+  photon_number:
+    parameters:
+      # Set the fixed parameters for the sweep
+      t: 1.0 # hopping amplitude
+      U: 3.0 # nearest neighbor interaction
+      g: 0.5 # light-matter coupling strength
+      
+      # set range for omega sweep
+      omega_min: 1.0
+      omega_max: 100.0
+      omega_points: 13
+  
+  entanglement_entropy:
+    # take parameters from photon_number sweep
+    parameters:
+      t: ${omega_sweep.photon_number.parameters.t}
+      g: ${omega_sweep.photon_number.parameters.g}
+      U: ${omega_sweep.photon_number.parameters.U}
+      
+      omega_min: ${omega_sweep.photon_number.parameters.omega_min}
+      omega_max: ${omega_sweep.photon_number.parameters.omega_max}
+      omega_points: ${omega_sweep.photon_number.parameters.omega_points}
+  
+
+seed: 42
+root_data_dir: /data/xxz_cavity/${method.name}/

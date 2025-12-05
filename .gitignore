@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Hydra output directories
+outputs/
+multirun/
+
+
 # Distribution / packaging
 .Python
 build/
