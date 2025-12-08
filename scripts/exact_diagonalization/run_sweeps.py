@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 
-def sweep_parameter(builder: HamiltonianBuilder, param_name: str, param_values: np.ndarray, fixed_params: DictConfig) -> np.ndarray:
-    results = []
+def sweep_parameter(builder: HamiltonianBuilder, param_name: str, param_values: np.ndarray, fixed_params: DictConfig) -> tuple[np.ndarray, np.ndarray]:
+    exp_vals = []
     # extract parameters from fixed_params to a dictionary
     params = dict(fixed_params)
     for val in param_values:
@@ -24,9 +24,9 @@ def sweep_parameter(builder: HamiltonianBuilder, param_name: str, param_values: 
         H = builder.build_hamiltonian_matrix(t=params["t"], U=params["U"], omega=params["omega"])
         analyzer = Analyzer(H, builder.basis)
         gs = analyzer.ground_state()
-        result = analyzer.expectation_value(gs, analyzer.photon_number_matrix)
-        results.append(result)
-    return np.array(results)
+        exp_value = analyzer.expectation_value(gs, analyzer.photon_number_matrix)
+        exp_vals.append(exp_value)
+    return (param_values, np.array(exp_vals))
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")
 def main(cfg: DictConfig):
@@ -40,71 +40,67 @@ def main(cfg: DictConfig):
         system_params.N_f = system_params.L // 2
     basis = Basis(system_params.L, system_params.N_f, system_params.N_ph)
 
-
-    # check for all sweeps defined in the config
-    # list all fields in cfg
-    sweeps = list(cfg.keys())
-    sweeps = [str(s) for s in sweeps if str(s).endswith("_sweep")]
-    logger.info(f"Detected sweeps: {sweeps}")
     
     observables_per_sweep = {}
-    for sweep in sweeps:
-        sweep_cfg = cfg[sweep]
-        observables_per_sweep[sweep] = list(sweep_cfg.keys())
-    # params = cfg.method.system.parameters
+    for sweep, sweep_cfg in cfg.sweeps.items():
+        observables_per_sweep[sweep] = list(sweep_cfg.observables)
     logger.info(f"Observables per sweep: {observables_per_sweep}")
 
-    for sweep in sweeps:
+
+    for sweep, sweep_cfg in cfg.sweeps.items():
         for observable in observables_per_sweep[sweep]:
             logger.info(f"Running sweep: {sweep}, observable: {observable}")
-            sweep_cfg = cfg[sweep]
-            params = sweep_cfg[observable].parameters
+
+            params = sweep_cfg.parameters
             builder = HamiltonianBuilder(basis, g=params.g, boundary_conditions=system_params.boundary_conditions)
 
-            param_name = sweep.split("_sweep")[0]
-            param_values = np.linspace(params[f"{param_name}_min"], params[f"{param_name}_max"], params[f"{param_name}_points"])
+            param_name = sweep.removesuffix("_sweep")
+            try:
+                p_min = params[f"{param_name}_min"]
+                p_max = params[f"{param_name}_max"]
+                p_pts = params[f"{param_name}_points"]
+            except KeyError as e:
+                raise KeyError(f"Missing parameter for sweep '{sweep}': {e}")
+
+            param_values = np.linspace(p_min, p_max, p_pts)
             results = sweep_parameter(builder, param_name, param_values, params)
 
-            # 
-            
-            # save results to hdf5 with description attributes
-            filename = os.path.join(root_data_dir, f"ed_{sweep}_{observable}.h5")
-            if not os.path.exists(filename):
-                os.makedirs(os.path.dirname(filename), exist_ok=True)
-            
-            with h5py.File(filename, "w") as f:
-                f.create_dataset("param_values", data=param_values)
-                f.create_dataset("results", data=results)
-                f.attrs["sweep"] = sweep
-                f.attrs["observable"] = observable
-                f.attrs["param_name"] = param_name
-                f.attrs["description"] = f"Sweep of {param_name} for observable {observable} using exact diagonalization."
+            # create a file if it does not exist yet otherwise append to it
+            filename = os.path.join(root_data_dir, f"ed_results_{sweep}.h5")
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            with h5py.File(filename, "a") as f:
+                # group by parameters
+                parameters_as_name = ""
+                for key, value in system_params.items():
+                    parameters_as_name += f"{key}={value}_"
+                for key, value in params.items():
+                    if not key.startswith(param_name):
+                        parameters_as_name += f"{key}={value}_"
+                # remove trailing underscore
+                parameters_as_name = parameters_as_name.rstrip("_")
+
+                # Create or open the group
+                grp = f.require_group(parameters_as_name)
+
+                # Create dataset in that group
+                if observable not in grp:
+                    grp.create_dataset(observable, data=results)
+                else:
+                    logger.warning(f"Dataset '{observable}' already exists in group '{parameters_as_name}'.")
+
+                # Add config as attribute to the group (not the whole file)
+                grp.attrs['config'] = OmegaConf.to_yaml(
+                    OmegaConf.to_container(cfg, resolve=True)
+                )
+
             logger.info(f"Saved results to {filename}")
             
     return
     
     
-    builder = HamiltonianBuilder(basis, g=params.g, boundary_conditions=params.boundary_conditions)
-    param_name = 'U'
-    param_values = np.linspace(0, 20, 100) * params.t
-    results = sweep_parameter(builder, param_name, param_values, params)
-
-    # plot results
-    import matplotlib.pyplot as plt
-    plt.plot(param_values / params.t, results)
-    plt.xlabel(f"{param_name} / t")
-    plt.ylabel("Photon Number Expectation Value")
-    # plot y axis as 10^-4 multiples
-    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.1e}"))
-    plt.title("Photon Number vs " + param_name)
-    plt.grid()
-    plt.show()
-    
-    
 
 if __name__ == "__main__":
     main()
-    exit()
 
 
 # def sweep_photon_number_vs_omega(self, omega_list: np.ndarray, t: float, U: float) -> np.ndarray:

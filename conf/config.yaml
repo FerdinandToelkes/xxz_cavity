@@ -12,8 +12,8 @@ system:
   N_ph: 2 # maximal number of photons in the cavity
   boundary_conditions: "periodic"
 
-U_sweep:
-  photon_number:
+sweeps:
+  U_sweep:
     parameters:
       # Set the fixed parameters for the sweep
       t: 1.0 # hopping amplitude
@@ -24,42 +24,26 @@ U_sweep:
       U_min: 0.0
       U_max: 20.0
       U_points: 100
-  
-  entanglement_entropy:
-    # take parameters from photon_number sweep
-    parameters:
-      t: ${U_sweep.photon_number.parameters.t}
-      g: ${U_sweep.photon_number.parameters.g}
-      omega: ${U_sweep.photon_number.parameters.omega}
-      
-      U_min: ${U_sweep.photon_number.parameters.U_min}
-      U_max: ${U_sweep.photon_number.parameters.U_max}
-      U_points: ${U_sweep.photon_number.parameters.U_points}
+    observables:
+      - photon_number
+      - entanglement_entropy
 
-omega_sweep:
-  photon_number:
+  omega_sweep:
     parameters:
       # Set the fixed parameters for the sweep
       t: 1.0 # hopping amplitude
-      U: 3.0 # nearest neighbor interaction
       g: 0.5 # light-matter coupling strength
-      
+      U: 3.0 # nearest neighbor interaction
+
       # set range for omega sweep
       omega_min: 1.0
       omega_max: 100.0
       omega_points: 13
-  
-  entanglement_entropy:
-    # take parameters from photon_number sweep
-    parameters:
-      t: ${omega_sweep.photon_number.parameters.t}
-      g: ${omega_sweep.photon_number.parameters.g}
-      U: ${omega_sweep.photon_number.parameters.U}
-      
-      omega_min: ${omega_sweep.photon_number.parameters.omega_min}
-      omega_max: ${omega_sweep.photon_number.parameters.omega_max}
-      omega_points: ${omega_sweep.photon_number.parameters.omega_points}
-  
+
+    observables:
+      - photon_number
+      - entanglement_entropy
+
 
 seed: 42
 root_data_dir: /data/xxz_cavity/${method.name}/
