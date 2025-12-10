@@ -118,7 +118,7 @@ def build_fermion_number_matrix(basis: Basis, site: int) -> csr_matrix:
 
 def build_longest_range_fermion_number_matrix(basis: Basis, boundary_conditions: str) -> csr_matrix:
     """
-    Construct the "longest-range" fermion number operator matrix n_max = n_0 +*n_{l} for a given basis,
+    Construct the "longest-range" fermion number operator matrix n_max = n_0 * n_{l} for a given basis,
     where l = L//2 for periodic boundary conditions and l = L-1 for open boundary conditions.
     Arguments:
         basis (Basis): The basis object containing fermion states.

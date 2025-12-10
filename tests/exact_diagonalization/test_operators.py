@@ -100,6 +100,9 @@ def test_build_photon_number_matrix(L: int, N_f: int, N_ph: int, expected_diag: 
 @pytest.mark.parametrize("L, N_f, N_ph, boundary_conditions, expected_diag", [
     (4, 2, 0, "periodic", [0, 1, 0, 0, 0, 0]),
     (4, 2, 0, "open", [0, 0, 0, 1, 0, 0]),
+    (5, 2, 0, "periodic", [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    (5, 2, 0, "open", [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]),
+
 ])
 def test_build_longest_range_fermion_number_matrix(L: int, N_f: int, N_ph: int, boundary_conditions: str, expected_diag: list[int]):
     basis = Basis(L, N_f, N_ph)
