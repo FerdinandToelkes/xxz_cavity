@@ -78,9 +78,37 @@ class Analyzer:
         # compute entanglement entropy
         S_squared = S**2
         nonzero = S_squared[S_squared > 0] # avoid log(0)
+
+        # check that the sum of squared singular values is 1 (as for every density matrix)
+        norm = np.sum(S_squared)
+        if not np.isclose(norm, 1.0):
+            raise ValueError(f"Sum of squared singular values is not 1 but {norm}. Ensure that psi is normalized.")
+
         entropy = -np.sum(nonzero * np.log(nonzero))
         
         return entropy
+    
+    def probability_distribution_photon_number(self, psi: np.ndarray) -> np.ndarray:
+        """
+        Compute the probability distribution of photon numbers for a given state vector psi.
+        Note: Make use of our ordering of the basis states to efficiently compute this, where
+        the psi matrix has dimensions (dim_fermions, dim_photons) and contains all amplitudes 
+        for a given photon number in one column.
+        Arguments:
+            psi (np.ndarray): The state vector of the full system.
+        Raises:
+            ValueError: If the total probability does not sum to 1.
+        Returns:
+            np.ndarray: The probability distribution over photon numbers.
+        """
+        psi_matrix = self.build_psi_matrix(psi)
+        prob_distribution = np.sum(np.abs(psi_matrix)**2, axis=0)
+
+        # check that the probability distribution sums to 1
+        total_prob = np.sum(prob_distribution)
+        if not np.isclose(total_prob, 1.0):
+            raise ValueError(f"Total probability is not 1 but {total_prob}. Ensure that psi is normalized.")
+        return prob_distribution
 
     def expectation_value(self, psi: np.typing.NDArray[np.complex128], operator: csr_matrix | np.ndarray) -> float:
         """

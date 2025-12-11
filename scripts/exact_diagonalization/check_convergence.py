@@ -8,33 +8,12 @@ from omegaconf import DictConfig, OmegaConf
 from src.exact_diagonalization.basis import Basis
 from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
 from src.exact_diagonalization.analyzer import Analyzer
-from scripts.exact_diagonalization.utils import log_config, register_hydra_resolvers, save_relevant_config
+from scripts.exact_diagonalization.utils import log_config, register_hydra_resolvers, get_name_from_parameters, save_relevant_config
  
 
 logger = logging.getLogger(__name__)
 register_hydra_resolvers()
 
-
-def get_name_from_parameters(system_params: dict, params: dict, param_name: str) -> str:
-    """
-    Generate a string representation of the system parameters excluding the sweep parameter.
-    Arguments:
-        system_params (dict): The system parameters from the config.
-        params (dict): The sweep parameters from the config.
-        param_name (str): The name of the parameter being swept.
-    Returns:
-        str: A string representation of the parameters for naming.
-    """
-    parameters_as_name = ""
-    for key, value in system_params.items():
-        if not key.startswith(param_name):
-            parameters_as_name += f"{key}={value}_"
-    for key, value in params.items():
-        if not key.startswith(param_name):
-            parameters_as_name += f"{key}={value}_"
-    # remove trailing underscore
-    parameters_as_name = parameters_as_name.rstrip("_")
-    return parameters_as_name
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")
 def main(cfg: DictConfig) -> None:
@@ -47,6 +26,7 @@ def main(cfg: DictConfig) -> None:
     photon_number_cutoffs = cfg.convergence_checks.photon_number_cutoffs
 
     for observable in observables:
+        logger.info(f"Running convergence check for observable: {observable}")
         parameters_as_name = get_name_from_parameters(system_params, params, "N_ph")
         save_dir = os.path.join(root_data_dir, observable, "convergence_check", parameters_as_name)
 
@@ -58,7 +38,6 @@ def main(cfg: DictConfig) -> None:
         
         vals = []
         for N_ph_cutoff in photon_number_cutoffs:
-            logger.debug(f"Running convergence check for observable: {observable} with photon cutoff: {N_ph_cutoff}")
 
             basis = Basis(system_params.L, system_params.N_f, N_ph_cutoff)
             builder = HamiltonianBuilder(basis, g=params.g, boundary_conditions=system_params.boundary_conditions)
@@ -81,6 +60,7 @@ def main(cfg: DictConfig) -> None:
         np.save(results_filename, (photon_number_cutoffs, np.array(vals)))
         config_filename = os.path.join(save_dir, "used_config.yaml")
         save_relevant_config(config_filename, cfg, observable, system_params, params)
+        logger.info(f"Saved convergence check results to {results_filename} and config to {config_filename}")
 
     
 if __name__ == "__main__":

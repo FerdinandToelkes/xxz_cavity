@@ -1,5 +1,6 @@
 # Configuration file for the XXZ cavity model experiments
 # Lets see how I will structure the configuration settings :)
+# note that we do not scale by t in the config or the code since t=1 is fixed throughout
 
 
 defaults:
@@ -82,14 +83,23 @@ sweeps:
         U_max: 4.0
         U_points: 50
 
+# config for computing observables for one set of parameters
+single_evaluations:
+  photon_number_distribution:
+    parameters:
+      t: 1.0
+      g0: 0.3
+      g: ${gscale:${single_evaluations.photon_number_distribution.parameters.g0},${system.L}}
+      U: 3.0
+      omega: 1.0
 
 convergence_checks:
   # these are the parameters that were used in the paper (see supplemental material)
   parameters:
     t: 1.0
-    U: 2.4
     g0: 4.0
     g: ${gscale:${convergence_checks.parameters.g0},${system.L}}
+    U: 2.4
     omega: 1.0
 
   observables:

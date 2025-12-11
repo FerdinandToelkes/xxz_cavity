@@ -129,6 +129,94 @@ def test_entanglement_entropy_fermions_photons_maximal(L: int, N_f: int, N_ph: i
     expected_entropy = np.log(min(dim_el, dim_ph))  # see e.g. Wikipedia page on entanglement entropy
     assert_allclose(entropy, expected_entropy)
 
+
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
+    (4, 2, 2, 1.0, 2.0, 0.5, 1.0),
+    (6, 3, 3, 1.0, 5.0, 1.0, 2.0),
+    (8, 4, 4, 1.0, -1.0, 0.0, 0.0),
+])
+def test_entanglement_entropy_fermions_photons_non_normalized(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float):
+    basis = Basis(L, N_f, N_ph)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="periodic")
+    H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
+    analyzer = Analyzer(H, basis)
+
+    # Create a non-normalized state
+    dim_el = analyzer.dim_el
+    dim_ph = analyzer.dim_ph
+    psi = np.ones(dim_el * dim_ph, dtype=complex)  # not normalized
+
+    with pytest.raises(ValueError):
+        analyzer.entanglement_entropy_fermions_photons(psi)
+
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
+    (4, 2, 3, 1.0, 1.5, 1.5, 0.75),
+    (6, 3, 1, 1.0, 3.3, 1.2, 2.2),
+    (8, 4, 2, 1.0, -1.5, 0.0, 0.0),
+])
+def test_probability_distribution_photon_number_uniform(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float):
+    basis = Basis(L, N_f, N_ph)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="periodic")
+    H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
+    analyzer = Analyzer(H, basis)
+
+    # Create a test state with known photon number distribution
+    dim_el = analyzer.dim_el
+    dim_ph = analyzer.dim_ph
+    psi = np.zeros(dim_el * dim_ph, dtype=complex)
+    # Set amplitudes for different photon numbers
+    for n_ph in range(dim_ph):
+        for n_el in range(dim_el):
+            basis_idx = n_el * dim_ph + n_ph
+            psi[basis_idx] = 1.0 / np.sqrt(dim_el * dim_ph)  # equal superposition
+
+    prob_distribution = analyzer.probability_distribution_photon_number(psi)
+    expected_distribution = np.full(dim_ph, 1.0 / dim_ph)  # uniform distribution over photon numbers
+    assert_allclose(prob_distribution, expected_distribution)
+
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega, target_n_ph", [
+    (4, 2, 5, 1.0, 4.0, 0.5, 1.0, 3),
+    (6, 3, 4, 1.0, 2.0, 1.0, 2.0, 2),
+    (8, 4, 6, 1.0, -1.0, 0.0, 0.0, 4),
+])
+def test_probability_distribution_photon_number_single_photon_number(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float, target_n_ph: int):
+    basis = Basis(L, N_f, N_ph)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="open")
+    H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
+    analyzer = Analyzer(H, basis)
+
+    # Create a test state with all amplitude in a single photon number sector
+    dim_el = analyzer.dim_el
+    dim_ph = analyzer.dim_ph
+    psi = np.zeros(dim_el * dim_ph, dtype=complex)
+    for n_el in range(dim_el):
+        basis_idx = n_el * dim_ph + target_n_ph
+        psi[basis_idx] = 1.0 / np.sqrt(dim_el)  # equal superposition in this sector
+
+    prob_distribution = analyzer.probability_distribution_photon_number(psi)
+    expected_distribution = np.zeros(dim_ph)
+    expected_distribution[target_n_ph] = 1.0  # all probability in target_n_ph
+    assert_allclose(prob_distribution, expected_distribution)
+
+@pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
+    (4, 2, 5, 1.0, 2.5, 0.75, -1.0),
+    (6, 3, 1, 1.0, 4.0, 2.0, 1.0),
+    (8, 4, 3, 1.0, 1.0, 0.0, 0.0),
+])
+def test_probability_distribution_photon_number_non_normalized(L: int, N_f: int, N_ph: int, t: float, U: float, g: float, omega: float):
+    basis = Basis(L, N_f, N_ph)
+    builder = HamiltonianBuilder(basis, g=g, boundary_conditions="periodic")
+    H = builder.build_hamiltonian_matrix(t=t, U=U, omega=omega)
+    analyzer = Analyzer(H, basis)
+
+    # Create a non-normalized state
+    dim_el = analyzer.dim_el
+    dim_ph = analyzer.dim_ph
+    psi = np.ones(dim_el * dim_ph, dtype=complex)  # not normalized
+
+    with pytest.raises(ValueError):
+        analyzer.probability_distribution_photon_number(psi)
+
 @pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
     (4, 2, 2, 0, 0, 0, 0), # only dimensions matter since we set psi ourselves
     (6, 3, 3, 0, 0, 0, 0),
