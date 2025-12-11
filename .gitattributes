@@ -1,0 +1,2 @@
+# Exclude python notebooks from language count on github
+*.ipynb -linguist-detectable

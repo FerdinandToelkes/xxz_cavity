@@ -1,7 +1,6 @@
 import hydra
 import logging
 import os
-import h5py
 import numpy as np
 
 from omegaconf import DictConfig, OmegaConf
@@ -9,9 +8,11 @@ from omegaconf import DictConfig, OmegaConf
 from src.exact_diagonalization.basis import Basis
 from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
 from src.exact_diagonalization.analyzer import Analyzer
+from scripts.exact_diagonalization.utils import log_config, register_hydra_resolvers, save_relevant_config
  
 
 logger = logging.getLogger(__name__)
+register_hydra_resolvers()
 
 
 def get_name_from_parameters(system_params: dict, params: dict, param_name: str) -> str:
@@ -37,65 +38,50 @@ def get_name_from_parameters(system_params: dict, params: dict, param_name: str)
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")
 def main(cfg: DictConfig) -> None:
-    logger.info(OmegaConf.to_yaml(OmegaConf.to_container(cfg, resolve=True)))
+    log_config(logger, cfg)
     
+    root_data_dir = cfg.root_data_dir
     system_params = cfg.system
     params = cfg.convergence_checks.parameters
     observables = cfg.convergence_checks.observables
     photon_number_cutoffs = cfg.convergence_checks.photon_number_cutoffs
 
-    if system_params.N_f is None:
-        system_params.N_f = system_params.L // 2
-
-    # TODO: make this nicer!
-    g = params.g / np.sqrt(system_params.L)
-
-    results = {}
     for observable in observables:
-        exp_values = []
+        parameters_as_name = get_name_from_parameters(system_params, params, "N_ph")
+        save_dir = os.path.join(root_data_dir, observable, "convergence_check", parameters_as_name)
+
+        # if save dir already exists, ask whether to overwrite
+        if os.path.exists(save_dir) and not cfg.overwrite_existing:
+            logger.warning(f"Save directory {save_dir} already exists. Skipping sweep. To overwrite, set 'overwrite_existing' to true in the config.")
+            continue
+        os.makedirs(save_dir, exist_ok=True)
+        
+        vals = []
         for N_ph_cutoff in photon_number_cutoffs:
             logger.debug(f"Running convergence check for observable: {observable} with photon cutoff: {N_ph_cutoff}")
+
             basis = Basis(system_params.L, system_params.N_f, N_ph_cutoff)
-            builder = HamiltonianBuilder(basis, g=g, boundary_conditions=system_params.boundary_conditions)
+            builder = HamiltonianBuilder(basis, g=params.g, boundary_conditions=system_params.boundary_conditions)
             H = builder.build_hamiltonian_matrix(t=params.t, U=params.U, omega=params.omega)
             analyzer = Analyzer(H, basis)
             gs = analyzer.ground_state()
             if observable == "photon_number":
-                exp_value = analyzer.expectation_value(gs, analyzer.photon_number_matrix)
+                value = analyzer.expectation_value(gs, analyzer.photon_number_matrix)
             elif observable == "longest_range_correlation":
-                exp_value = analyzer.expectation_value(gs, analyzer.longest_range_fermion_number_matrix)
+                value = analyzer.expectation_value(gs, analyzer.longest_range_fermion_number_matrix)
             elif observable == "entanglement_entropy":
-                exp_value = analyzer.entanglement_entropy_fermions_photons(gs)
+                value = analyzer.entanglement_entropy_fermions_photons(gs)
             else:
                 raise ValueError(f"Unknown observable: {observable}")
             
-            exp_values.append(exp_value)
-            logger.debug(f"Result for {observable} with photon cutoff {N_ph_cutoff}: {exp_value}")
+            vals.append(value)
 
-        results[observable] = (photon_number_cutoffs, exp_values)
+        # save results and used config
+        results_filename = os.path.join(save_dir, "results.npy")
+        np.save(results_filename, (photon_number_cutoffs, np.array(vals)))
+        config_filename = os.path.join(save_dir, "used_config.yaml")
+        save_relevant_config(config_filename, cfg, observable, system_params, params)
 
-    # save to hdf5 file
-    root_data_dir = cfg.root_data_dir
-    filename = os.path.join(root_data_dir, f"ed_results_N_ph_convergence.h5")
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    parameters_as_name = get_name_from_parameters(system_params, params, "N_ph")
-    logger.info(f"Saving results to {filename} under group {parameters_as_name}")
     
-    with h5py.File(filename, "a") as f:
-        # create or open the group
-        grp = f.require_group(parameters_as_name)
-
-        # Create datasets for each observable
-        for observable, data in results.items():
-            if observable not in grp:
-                grp.create_dataset(observable, data=data)
-            else:
-                overwrite = input(f"Dataset {observable} already exists in group {parameters_as_name}. Overwrite? (y/n): ")
-                if overwrite.lower() == 'y':
-                    del grp[observable]
-                    grp.create_dataset(observable, data=data)
-                else:
-                    logger.info(f"Skipping dataset {observable} in group {parameters_as_name}.")
-
 if __name__ == "__main__":
     main()

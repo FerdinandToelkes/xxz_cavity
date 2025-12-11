@@ -8,10 +8,11 @@ defaults:
 
 seed: 42
 root_data_dir: /data/xxz_cavity/${method.name}/
+overwrite_existing: false
 
 system:
   L: 4 # number of lattice sites
-  N_f: null # number of fermions (null for half-filling)
+  N_f: ${half_filling:${system.L}}
   N_ph: 2 # maximal number of photons in the cavity
   boundary_conditions: "periodic"
 
@@ -19,9 +20,10 @@ sweeps:
   photon_number:
     U_sweep:
       parameters:
-        # Set the fixed parameters for the sweep
         t: 1.0 # hopping amplitude
-        g: 0.5 # light-matter coupling strength
+        g0: 0.5 # before scaling with system size
+        # set light-matter coupling strength g = g0 / sqrt(L)
+        g: ${gscale:${sweeps.photon_number.U_sweep.parameters.g0},${system.L}}
         omega: 10.0 # cavity frequency
         
         # set range for U sweep
@@ -31,9 +33,10 @@ sweeps:
     
     omega_sweep:
       parameters:
-        # Set the fixed parameters for the sweep
         t: 1.0 # hopping amplitude
-        g: 0.5 # light-matter coupling strength
+        g0: 0.5 # before scaling with system size
+        # set light-matter coupling strength g = g0 / sqrt(L)
+        g: ${gscale:${sweeps.photon_number.omega_sweep.parameters.g0},${system.L}}
         U: 3.0 # nearest neighbor interaction
 
         # set range for omega sweep
@@ -46,6 +49,7 @@ sweeps:
       parameters:
         # same parameters as for photon_number U_sweep
         t: ${sweeps.photon_number.U_sweep.parameters.t}
+        g0: ${sweeps.photon_number.U_sweep.parameters.g0}
         g: ${sweeps.photon_number.U_sweep.parameters.g}
         omega: ${sweeps.photon_number.U_sweep.parameters.omega}
 
@@ -57,6 +61,7 @@ sweeps:
       parameters:
         # same parameters as for photon_number omega_sweep
         t: ${sweeps.photon_number.omega_sweep.parameters.t}
+        g0: ${sweeps.photon_number.omega_sweep.parameters.g0}
         g: ${sweeps.photon_number.omega_sweep.parameters.g}
         U: ${sweeps.photon_number.omega_sweep.parameters.U}
 
@@ -69,7 +74,8 @@ sweeps:
     U_sweep:
       parameters:
         t: 1.0
-        g: 0.3
+        g0: 0.3
+        g: ${gscale:${sweeps.longest_range_correlation.U_sweep.parameters.g0},${system.L}}
         omega: 1.0
 
         U_min: 0.0
@@ -82,7 +88,8 @@ convergence_checks:
   parameters:
     t: 1.0
     U: 2.4
-    g: 4.0
+    g0: 4.0
+    g: ${gscale:${convergence_checks.parameters.g0},${system.L}}
     omega: 1.0
 
   observables:
@@ -91,4 +98,4 @@ convergence_checks:
     - longest_range_correlation
     
   # this is limited by computational resources
-  photon_number_cutoffs: [0, 2, 4, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24] # 40, 60
+  photon_number_cutoffs: [0, 2, 4, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
