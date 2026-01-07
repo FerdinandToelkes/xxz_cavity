@@ -3,7 +3,7 @@ import logging
 import os
 import numpy as np
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from src.basis import Basis
 from src.hamiltonian_builder import HamiltonianBuilder
@@ -14,8 +14,10 @@ from scripts.utils import log_config, register_hydra_resolvers, get_name_from_pa
 logger = logging.getLogger(__name__)
 register_hydra_resolvers()
 
+# this script can be run from the methods/ed/ directory with:
+# python3 -m scripts.check_convergence system.L=4 system.boundary_conditions=open
 
-@hydra.main(version_base=None, config_path="../../conf", config_name="config")
+@hydra.main(version_base=None, config_path="../../../configs", config_name="config")
 def main(cfg: DictConfig) -> None:
     log_config(logger, cfg)
     

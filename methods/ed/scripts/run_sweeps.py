@@ -3,8 +3,7 @@ import hydra
 import logging
 import os
 
-from omegaconf import DictConfig, OmegaConf
-from scipy.sparse import csr_matrix
+from omegaconf import DictConfig
 
 
 
@@ -15,6 +14,9 @@ from scripts.utils import log_config, register_hydra_resolvers, get_name_from_pa
 
 logger = logging.getLogger(__name__)
 register_hydra_resolvers()
+
+# this script can be run from the methods/ed/ directory with:
+# python3 -m scripts.run_sweeps system.L=4 system.boundary_conditions=open
 
 
 def get_sweep_range(params: dict, name: str) -> tuple[float, float, int]:
@@ -70,7 +72,7 @@ def sweep_parameter(observable: str, builder: HamiltonianBuilder, param_name: st
 
 
 
-@hydra.main(version_base=None, config_path="../../conf", config_name="config")
+@hydra.main(version_base=None, config_path="../../../configs", config_name="config")
 def main(cfg: DictConfig):
     log_config(logger, cfg)
     

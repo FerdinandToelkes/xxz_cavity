@@ -3,12 +3,9 @@
 # note that we do not scale by t in the config or the code since t=1 is fixed throughout
 
 
-defaults:
-  - method: ed
-  - _self_
-
+method: ed
 seed: 42
-root_data_dir: /data/xxz_cavity/${method.name}/
+root_data_dir: /data/xxz_cavity/${method}/
 overwrite_existing: false
 
 system:
