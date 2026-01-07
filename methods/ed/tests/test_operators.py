@@ -3,11 +3,11 @@ import pytest
 from scipy.sparse import triu
 
 
-from src.exact_diagonalization.operators import count_pairs, flip_bit, count_bits_between, check_if_bit_set, \
+from src.operators import count_pairs, flip_bit, count_bits_between, check_if_bit_set, \
     build_photon_number_matrix, build_fermion_number_matrix, build_longest_range_fermion_number_matrix
 #, fermion_creator, fermion_annihilator, fermion_number_operator, total_fermion_number_operator 
-from src.exact_diagonalization.basis import Basis    
-from tests.exact_diagonalization.utils import assert_allclose
+from src.basis import Basis    
+from tests.utils import assert_allclose
 
 @pytest.mark.parametrize("n, d, width, boundary_conditions, expected_count", [
     (0b0, 1, 1, "periodic", 0),

@@ -47,12 +47,12 @@ def save_relevant_config(config_filename: str, cfg: DictConfig, observable: str,
         params (DictConfig): The sweep parameters.
     """
     # ensure that the DictConfig is converted to a regular dict for saving
-    system_params = OmegaConf.to_container(system_params, resolve=True)
-    params = OmegaConf.to_container(params, resolve=True)
+    resolved_system_params = OmegaConf.to_container(system_params, resolve=True)
+    resolved_params = OmegaConf.to_container(params, resolve=True)
     relevant = {
         "observable": observable,
-        "system": system_params,
-        "params": params,
+        "system": resolved_system_params,
+        "params": resolved_params,
         "seed": cfg.seed
     }
     OmegaConf.save(

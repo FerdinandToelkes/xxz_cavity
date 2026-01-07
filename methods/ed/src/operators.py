@@ -2,8 +2,8 @@ import numpy as np
 
 from scipy.sparse import csr_matrix, diags, identity, kron
 
-from src.exact_diagonalization.basis import Basis
-from src.exact_diagonalization.utils import circular_right_shift
+from src.basis import Basis
+from src.utils import circular_right_shift
 
 def count_pairs(n: int, d: int, width: int, boundary_conditions: str = "periodic") -> int:
     """

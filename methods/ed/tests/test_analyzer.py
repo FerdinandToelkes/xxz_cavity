@@ -3,10 +3,10 @@ import pytest
 
 from scipy.sparse import csr_matrix
 
-from tests.exact_diagonalization.utils import assert_allclose
-from src.exact_diagonalization.basis import Basis
-from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
-from src.exact_diagonalization.analyzer import Analyzer
+from tests.utils import assert_allclose
+from src.basis import Basis
+from src.hamiltonian_builder import HamiltonianBuilder
+from src.analyzer import Analyzer
 
 
 @pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [

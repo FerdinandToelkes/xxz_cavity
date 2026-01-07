@@ -1,6 +1,6 @@
 import pytest
 
-from src.exact_diagonalization.basis import Basis
+from src.basis import Basis
 
 @pytest.mark.parametrize("L, N_f, N_ph, expected_states", [
     (2, 0, 0, [(0b00, 0)]),

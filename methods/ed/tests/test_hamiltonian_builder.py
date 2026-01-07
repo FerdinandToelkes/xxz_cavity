@@ -4,9 +4,9 @@ import pytest
 from scipy.sparse import csr_matrix
 
 
-from tests.exact_diagonalization.utils import assert_allclose
-from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
-from src.exact_diagonalization.basis import Basis
+from tests.utils import assert_allclose
+from src.hamiltonian_builder import HamiltonianBuilder
+from src.basis import Basis
 
 def test_hamiltonian_invalid_boundary_conditions():
     basis = Basis(2, 2)  # 2 sites, 2 particles

@@ -5,10 +5,10 @@ import numpy as np
 
 from omegaconf import DictConfig, OmegaConf
 
-from src.exact_diagonalization.basis import Basis
-from src.exact_diagonalization.hamiltonian_builder import HamiltonianBuilder
-from src.exact_diagonalization.analyzer import Analyzer
-from scripts.exact_diagonalization.utils import log_config, register_hydra_resolvers, get_name_from_parameters, save_relevant_config
+from src.basis import Basis
+from src.hamiltonian_builder import HamiltonianBuilder
+from src.analyzer import Analyzer
+from scripts.utils import log_config, register_hydra_resolvers, get_name_from_parameters, save_relevant_config
  
 
 logger = logging.getLogger(__name__)

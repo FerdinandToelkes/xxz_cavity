@@ -4,9 +4,9 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigsh
 
-from src.exact_diagonalization.basis import Basis
-from src.exact_diagonalization.operators import build_photon_number_matrix, build_longest_range_fermion_number_matrix
-from src.exact_diagonalization.utils import is_hermitian
+from src.basis import Basis
+from src.operators import build_photon_number_matrix, build_longest_range_fermion_number_matrix
+from src.utils import is_hermitian
 
 class Analyzer:
     def __init__(self, H: csr_matrix, basis: Basis, boundary_conditions: str="periodic"):            
