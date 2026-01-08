@@ -5,9 +5,9 @@ import numpy as np
 
 from omegaconf import DictConfig
 
-from src.basis import Basis
-from src.hamiltonian_builder import HamiltonianBuilder
-from src.analyzer import Analyzer
+from ed.basis import Basis
+from ed.hamiltonian_builder import HamiltonianBuilder
+from ed.analyzer import Analyzer
 from scripts.utils import log_config, register_hydra_resolvers, get_name_from_parameters, save_relevant_config
  
 

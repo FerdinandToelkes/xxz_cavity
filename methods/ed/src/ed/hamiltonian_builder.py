@@ -3,9 +3,9 @@ from scipy.sparse import identity, diags, kron, lil_matrix, csr_matrix
 from scipy.linalg import eigh_tridiagonal
 
 
-from src.basis import Basis
-from src.operators import count_pairs, flip_bit, check_if_bit_set, build_photon_number_matrix
-from src.utils import is_hermitian
+from ed.basis import Basis
+from ed.operators import count_pairs, flip_bit, check_if_bit_set, build_photon_number_matrix
+from ed.utils import is_hermitian
 
 class HamiltonianBuilder:
     """
@@ -263,7 +263,7 @@ class HamiltonianBuilder:
     
 
 # if __name__ == "__main__":
-#     from src.slow_hamiltonian import Hamiltonian as BaseHamiltonian
+#     from ed.slow_hamiltonian import Hamiltonian as BaseHamiltonian
 
 #     # simple test
 #     L = 16

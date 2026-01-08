@@ -3,7 +3,7 @@ import numpy as np
 
 from scipy.sparse import csr_matrix
     
-from src.utils import circular_left_shift, circular_right_shift, is_hermitian
+from ed.utils import circular_left_shift, circular_right_shift, is_hermitian
 
 
 

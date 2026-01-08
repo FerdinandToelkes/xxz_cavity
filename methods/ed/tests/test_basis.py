@@ -1,6 +1,6 @@
 import pytest
 
-from src.basis import Basis
+from ed.basis import Basis
 
 @pytest.mark.parametrize("L, N_f, N_ph, expected_states", [
     (2, 0, 0, [(0b00, 0)]),

@@ -2,13 +2,14 @@ import numpy as np
 
 from scipy.sparse import csr_matrix, diags, identity, kron
 
-from src.basis import Basis
-from src.utils import circular_right_shift
+from ed.basis import Basis
+from ed.utils import circular_right_shift
 
 def count_pairs(n: int, d: int, width: int, boundary_conditions: str = "periodic") -> int:
     """
     Count neighboring 1-1 pairs that are d places apart in bit representation. Note, that
     periodic boundary conditions are considered.
+    
     Arguments:
         n (int): The integer whose bits are to be analyzed.
         d (int): The distance between neighboring bits to consider.
@@ -16,7 +17,7 @@ def count_pairs(n: int, d: int, width: int, boundary_conditions: str = "periodic
         boundary_condition (str): The type of boundary condition to consider.
     Returns:
         int: The count of neighboring 1-1 pairs d places apart.
-    Example:
+    Examples:
         count_pairs(0b111011, 1) -> 4
         count_pairs(0b111011, 2) -> 4 
     """

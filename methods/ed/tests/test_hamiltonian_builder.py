@@ -5,8 +5,8 @@ from scipy.sparse import csr_matrix
 
 
 from tests.utils import assert_allclose
-from src.hamiltonian_builder import HamiltonianBuilder
-from src.basis import Basis
+from ed.hamiltonian_builder import HamiltonianBuilder
+from ed.basis import Basis
 
 def test_hamiltonian_invalid_boundary_conditions():
     basis = Basis(2, 2)  # 2 sites, 2 particles

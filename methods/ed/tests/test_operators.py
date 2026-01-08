@@ -3,10 +3,10 @@ import pytest
 from scipy.sparse import triu
 
 
-from src.operators import count_pairs, flip_bit, count_bits_between, check_if_bit_set, \
+from ed.operators import count_pairs, flip_bit, count_bits_between, check_if_bit_set, \
     build_photon_number_matrix, build_fermion_number_matrix, build_longest_range_fermion_number_matrix
 #, fermion_creator, fermion_annihilator, fermion_number_operator, total_fermion_number_operator 
-from src.basis import Basis    
+from ed.basis import Basis    
 from tests.utils import assert_allclose
 
 @pytest.mark.parametrize("n, d, width, boundary_conditions, expected_count", [

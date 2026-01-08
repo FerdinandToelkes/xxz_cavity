@@ -4,9 +4,9 @@ import pytest
 from scipy.sparse import csr_matrix
 
 from tests.utils import assert_allclose
-from src.basis import Basis
-from src.hamiltonian_builder import HamiltonianBuilder
-from src.analyzer import Analyzer
+from ed.basis import Basis
+from ed.hamiltonian_builder import HamiltonianBuilder
+from ed.analyzer import Analyzer
 
 
 @pytest.mark.parametrize("L, N_f, N_ph, t, U, g, omega", [
