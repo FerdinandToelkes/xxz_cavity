@@ -1,0 +1,20 @@
+name = "Dmrg"
+uuid = "462d8d2f-8cb6-4d6b-98a1-b82acfe75e73"
+version = "0.1.0"
+authors = ["Ferdinand Tölkes <ftoelkes@uni-bremen.de>"]
+
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ITensorMPS = "0d1a4710-d33b-49a5-8f18-73bdf49b47e2"
+ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
+PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+Documenter = "1.16.1"
+ITensorMPS = "0.3.26"
+ITensors = "0.9.15"
+PackageCompiler = "2.2.4"
+Random = "1.11.0"
+Test = "1.11.0"
