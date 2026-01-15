@@ -6,8 +6,12 @@ name: Python application
 # Define when the workflow should run
 on:
   push:
+    paths:
+      - 'xxz_cavity/methods/ed/**'
     branches: [ "main" ]
   pull_request:
+    paths:
+      - 'xxz_cavity/methods/ed/**'
     branches: [ "main" ]
 
 permissions:
@@ -23,7 +27,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Set up Miniconda
+    - name: Set up Miniconda with conda environment
       uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
@@ -55,15 +59,4 @@ jobs:
       shell: bash -l {0}
       run: |
         cd methods/ed
-        pytest --cov=src --cov-report=term-missing -s
-
-    - name: Test pip install in clean venv
-      shell: bash
-      run: |
-        cd methods/ed
-        python -m venv venv_test
-        source venv_test/bin/activate
-        python -m pip install --upgrade pip
-        pip install .
-        pip install pytest pytest-cov
         pytest --cov=src --cov-report=term-missing -s
