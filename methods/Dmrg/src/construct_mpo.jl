@@ -21,6 +21,14 @@ const _PAULI_SYMBOLS = (:X, :Y, :Z)
     return nothing
 end
 
+@inline function _check_spinless_fermions_sites(sites::AbstractVector{<:Index})
+    for s in sites
+        hastags(s, "Fermion") ||
+            throw(ArgumentError("All site indices must be for spinless fermions"))
+    end
+    return nothing
+end
+
 # @inline tells the compiler to inline the function, which can improve 
 # performance by avoiding function call overhead.
 # It is typically used for small, frequently called functions.
@@ -37,6 +45,8 @@ end
         return ComplexF64[1 0; 0 -1]
     end
 end
+
+
 
 """
     heisenberg_mpo(sites::Vector{<:Index}, J::Real, Jz::Real) -> MPO
