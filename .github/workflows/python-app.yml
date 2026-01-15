@@ -28,7 +28,7 @@ jobs:
       with:
         auto-update-conda: true
         activate-environment: ed
-        environment-file: environment.yml
+        environment-file: methods/ed/environment.yml
         python-version: 3.11
         auto-activate-base: false
 
@@ -36,6 +36,7 @@ jobs:
       # ensure that environment is active and packages are on path
       shell: bash -l {0}
       run: |
+        cd methods/ed
         python -m pip install --upgrade pip
         pip install -e .
         pip install flake8 
@@ -50,14 +51,16 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     
-    - name: Run tests with pytest
+    - name: Run tests with pytest in conda environment
       shell: bash -l {0}
       run: |
+        cd methods/ed
         pytest --cov=src --cov-report=term-missing -s
 
     - name: Test pip install in clean venv
       shell: bash
       run: |
+        cd methods/ed
         python -m venv venv_test
         source venv_test/bin/activate
         python -m pip install --upgrade pip
