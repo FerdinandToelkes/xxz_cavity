@@ -1,5 +1,6 @@
 name: ed
 channels:
+  - defaults
   - conda-forge
   - anaconda
 dependencies:
