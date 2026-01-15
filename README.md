@@ -1,6 +1,6 @@
 # xxz_cavity
 
-
+[![Python application](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/python-app-ed.yml/badge.svg)](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/python-app-ed.yml)
 
 
 # Notes on the theoretical background
