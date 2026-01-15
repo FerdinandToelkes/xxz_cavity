@@ -7,6 +7,8 @@ Welcome to the documentation page.
 
 ```@docs
 Dmrg
+heisenberg_mpo
+heisenberg_manual_mpo
 pauli_matrix_sum_mpo
 pauli_matrix_sum_manual_mpo
 ```
