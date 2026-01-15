@@ -157,23 +157,23 @@ function heisenberg_manual_mpo(sites::Vector{<:Index}, J::Real, Jz::Real)::MPO
     return MPO(W)
 end
 
-let 
-    L = 3
-    sites = siteinds("S=1/2", L)
-    h = heisenberg_mpo(sites, 1.0, 1.0)
-    # @show h
-    # for i in 1:L
-    #     W = h[i]
-    #     @show W
-    # end
+# let 
+#     L = 3
+#     sites = siteinds("S=1/2", L)
+#     h = heisenberg_mpo(sites, 1.0, 1.0)
+#     # @show h
+#     # for i in 1:L
+#     #     W = h[i]
+#     #     @show W
+#     # end
 
-    h_man = heisenberg_manual_mpo(sites, 1.0, 1.0)
+#     h_man = heisenberg_manual_mpo(sites, 1.0, 1.0)
 
-    random_state = random_mps(sites; linkdims=10)
-    @show inner(random_state', h, random_state)
-    @show inner(random_state', h_man, random_state)
+#     random_state = random_mps(sites; linkdims=10)
+#     @show inner(random_state', h, random_state)
+#     @show inner(random_state', h_man, random_state)
     
-end
+# end
 
 
 """

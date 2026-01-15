@@ -21,26 +21,6 @@ jobs:
         version: ['1.12']
         os: [ubuntu-latest]
 
-    # steps:
-    #   - uses: actions/checkout@v4
-      
-    #   - uses: julia-actions/setup-julia@latest
-    #     with:
-    #       version: ${{ matrix.version }}
-    #       arch: ${{ matrix.arch }}
-    #       working-directory: methods/Dmrg
-
-    #   - uses: julia-actions/julia-runtest@latest
-    #     with:
-    #       working-directory: methods/Dmrg
-      
-    #   - uses: julia-actions/julia-uploadcodecov@latest
-    #     with:
-    #       working-directory: methods/Dmrg
-    #     env:
-    #       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-
     steps:
       - uses: actions/checkout@v4
 
@@ -52,11 +32,16 @@ jobs:
         run: julia --project=methods/Dmrg -e 'using Pkg; Pkg.instantiate()'
 
       - name: Run Tests
-        run: julia --project=methods/Dmrg -e 'using Pkg; Pkg.test()'
+        run: julia --project=methods/Dmrg -e 'using Pkg; Pkg.test(coverage=true)'
 
       - name: Upload coverage to Codecov
-        uses: julia-actions/julia-uploadcodecov@latest
+        uses: codecov/codecov-action@v3
         with:
-          working-directory: methods/Dmrg
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          files: methods/Dmrg/coverage/coverage.xml
+          fail_ci_if_error: true
+
+
+      # - name: Upload coverage to Codecov
+      #   uses: julia-actions/julia-uploadcodecov@latest
+      #   with:
+      #     working-directory: methods/Dmrg
