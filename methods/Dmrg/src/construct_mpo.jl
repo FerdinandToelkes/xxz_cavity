@@ -58,6 +58,11 @@ function xxz_cavity_manual_mpo()
     throw(ErrorException("xxz_cavity_manual_mpo not yet implemented"))
 end
 
+function xxz_mpo()
+    # Placeholder for future implementation
+    throw(ErrorException("xxz_mpo not yet implemented"))
+end
+
 """
     heisenberg_mpo(sites::Vector{<:Index}, J::Real, Jz::Real) -> MPO
 

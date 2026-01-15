@@ -55,7 +55,7 @@ jobs:
         run: julia --project=methods/Dmrg -e 'using Pkg; Pkg.test()'
 
       - name: Upload coverage to Codecov
-        uses: julia-actions/julia-uploadcodecov@v1
+        uses: julia-actions/julia-uploadcodecov@latest
         with:
           working-directory: methods/Dmrg
         env:
