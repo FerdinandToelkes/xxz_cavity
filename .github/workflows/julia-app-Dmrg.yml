@@ -14,30 +14,48 @@ on:
     
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        version:
-          - '1.12'
-        os: 
-          ubuntu-latest
-        arch:
-          - x64
+        version: ['1.12']
+        os: [ubuntu-latest]
+
+    # steps:
+    #   - uses: actions/checkout@v4
+      
+    #   - uses: julia-actions/setup-julia@latest
+    #     with:
+    #       version: ${{ matrix.version }}
+    #       arch: ${{ matrix.arch }}
+    #       working-directory: methods/Dmrg
+
+    #   - uses: julia-actions/julia-runtest@latest
+    #     with:
+    #       working-directory: methods/Dmrg
+      
+    #   - uses: julia-actions/julia-uploadcodecov@latest
+    #     with:
+    #       working-directory: methods/Dmrg
+    #     env:
+    #       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: julia-actions/setup-julia@latest
+
+      - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-          working-directory: methods/Dmrg
 
-      - uses: julia-actions/julia-runtest@latest
-        with:
-          working-directory: methods/Dmrg
-      
-      - uses: julia-actions/julia-uploadcodecov@latest
+      - name: Install Dependencies
+        run: julia --project=methods/Dmrg -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run Tests
+        run: julia --project=methods/Dmrg -e 'using Pkg; Pkg.test()'
+
+      - name: Upload coverage to Codecov
+        uses: julia-actions/julia-uploadcodecov@v1
         with:
           working-directory: methods/Dmrg
         env:
