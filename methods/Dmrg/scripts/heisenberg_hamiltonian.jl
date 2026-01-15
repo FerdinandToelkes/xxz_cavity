@@ -35,29 +35,7 @@ function main()
     @show W
   end
 
-  # construct MPO by hand to compare
-  w = [Index(2, "MPO") for _ in 1:(L+1)]
-  W = ITensor(w[1], w[2]', sites[1]', sites[1])
-  W[w[1]=>1, w[2]=>1] += op("Id", sites[1])
-  # W[w[1]=>1, w[2]=>2] = op("X", sites[1])
-  # W[w[1]=>2, w[2]=>1] = op("Y", sites[1])
-  # W[w[L]=>1, w[L+1]=>1] = op("Id", sites[L])
-  # W[w[L]=>2, w[L+1]=>1] = op("X", sites[L]) + op("Y", sites[L])
-  # for j=2:L-1
-  #   W = ITensor(w[j], w[j+1]', sites[j]', sites[j])
-  #   W[w[j]=>1, w[j+1]=>1] = op("Id", sites[j])
-  #   W[w[j]=>1, w[j+1]=>2] = op("X", sites[j])
-  #   W[w[j]=>2, w[j+1]=>1] = op("Y", sites[j])
-  # end
-  H_manual = MPO(W for W in w[1:end-1])
   
-
-  # compare by applying to a random state
-  random_state = random_mps(sites; linkdims=10)
-  @show H * random_state
-  @show inner(random_state', H, random_state)
-  @show H_manual * random_state
-  @show inner(random_state', H_manual, random_state)
   return
   # initialize a MPS for a system at half-filling
   state = [isodd(n) ? "Occ" : "Emp" for n=1:L]
