@@ -1,0 +1,66 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+# Define when the workflow should run
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+# Define which jobs should be executed
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        activate-environment: ed
+        environment-file: environment.yml
+        python-version: 3.11
+        auto-activate-base: false
+
+    - name: Install package and dependencies
+      # ensure that environment is active and packages are on path
+      shell: bash -l {0}
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install flake8 
+
+    - name: Lint with flake8 (syntax checking)
+      # ensure that environment is active and packages are on path
+      shell: bash -l {0}
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    
+    - name: Run tests with pytest
+      shell: bash -l {0}
+      run: |
+        pytest --cov=src --cov-report=term-missing -s
+
+    - name: Test pip install in clean venv
+      shell: bash
+      run: |
+        python -m venv venv_test
+        source venv_test/bin/activate
+        python -m pip install --upgrade pip
+        pip install .
+        pip install pytest pytest-cov
+        pytest --cov=src --cov-report=term-missing -s
