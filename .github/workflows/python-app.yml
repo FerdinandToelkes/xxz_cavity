@@ -7,11 +7,11 @@ name: Python application
 on:
   push:
     paths:
-      - 'xxz_cavity/methods/ed/**'
+      - 'methods/ed/**'
     branches: [ "main" ]
   pull_request:
     paths:
-      - 'xxz_cavity/methods/ed/**'
+      - 'methods/ed/**'
     branches: [ "main" ]
 
 permissions:
