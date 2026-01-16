@@ -60,7 +60,7 @@ jobs:
       shell: bash -l {0}
       run: |
         cd methods/ed
-        pytest --cov=src --cov-report=term-missing -s --cov-report=xml
+        pytest --cov=src --cov-report=xml
 
     - name: Upload Python coverage to Codecov
       uses: codecov/codecov-action@v3

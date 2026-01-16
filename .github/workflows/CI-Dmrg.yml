@@ -2,6 +2,7 @@
 # It was taken from https://github.com/JuliaCI/Coverage.jl/blob/master/examples/ci/github-actions.yml 
 
 name: CI - Dmrg
+
 on:
   push:
     paths: 
