@@ -14,7 +14,7 @@ on:
     
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
+    name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -32,6 +32,7 @@ jobs:
       - name: Run tests with coverage
         uses: julia-actions/julia-runtest@v1
         with:
+          project: methods/Dmrg
           coverage: true
 
       # Use Coverage.jl with official uploader to codecov.io
@@ -40,5 +41,7 @@ jobs:
           julia -e '
             using Pkg; Pkg.add("Coverage")
             using Coverage
-            process_and_upload(service=:codecov, folder="src")
+            process_and_upload(service=:codecov, folder="methods/Dmrg/src")
           '
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

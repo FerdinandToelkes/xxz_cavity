@@ -51,6 +51,7 @@ end
 function xxz_cavity_mpo(
     sites::Vector{<:Index}
 )
+    _check_spinhalf_sites(sites)
     # Placeholder for future implementation
     throw(ErrorException("xxz_cavity_mpo not yet implemented"))
 end
