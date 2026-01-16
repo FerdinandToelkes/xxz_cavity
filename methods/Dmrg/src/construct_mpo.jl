@@ -48,7 +48,9 @@ end
 
 
 
-function xxz_cavity_mpo()
+function xxz_cavity_mpo(
+    sites::Vector{<:Index}
+)
     # Placeholder for future implementation
     throw(ErrorException("xxz_cavity_mpo not yet implemented"))
 end

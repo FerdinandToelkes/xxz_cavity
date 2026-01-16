@@ -21,9 +21,7 @@ permissions:
 jobs:
   build:
 
-    os: ubuntu-latest
-    arch:
-      - x64
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
@@ -58,6 +56,7 @@ jobs:
 
     
     - name: Run tests with pytest in conda environment
+      # ensure that environment is active and packages are on path
       shell: bash -l {0}
       run: |
         cd methods/ed
