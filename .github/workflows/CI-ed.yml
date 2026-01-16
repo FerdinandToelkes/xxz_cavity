@@ -71,6 +71,4 @@ jobs:
         fail_ci_if_error: true
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        # tell codecov that there are multiple CI jobs contributing to the coverage report
-        # CODECOV_PARALLEL: true
 

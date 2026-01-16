@@ -29,7 +29,10 @@ jobs:
       - name: Set up Julia
         uses: julia-actions/julia-buildpkg@v1
         with:
-          julia-version: ${{ matrix.julia-version }}
+          version: ${{ matrix.julia-version }}
+
+      - name: Cache Julia packages (faster builds)
+        uses: julia-actions/cache@v2
 
       - name: Run tests with coverage
         uses: julia-actions/julia-runtest@v1
@@ -50,5 +53,3 @@ jobs:
           '
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-          # tell codecov that there are multiple CI jobs contributing to the coverage report
-          # CODECOV_PARALLEL: true
