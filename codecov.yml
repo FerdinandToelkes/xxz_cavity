@@ -10,7 +10,7 @@ flag_management:
   individual_flags: # exceptions to the default rules above, stated flag by flag
     - name: ed  #fill in your own flag name
       paths: 
-      - src/methods/ed  #fill in your own path. Note, accepts globs, not regexes
+      - methods/ed  #fill in your own path. Note, accepts globs, not regexes
       carryforward: true
       statuses:
         - type: project
@@ -19,7 +19,7 @@ flag_management:
           target: 100%
     - name: Dmrg #fill in your own flag name
       paths: 
-      - src/methods/Dmrg  #fill in your own path. Note, accepts globs, not regexes
+      - methods/Dmrg  #fill in your own path. Note, accepts globs, not regexes
       carryforward: true
       statuses:
       - type: project
