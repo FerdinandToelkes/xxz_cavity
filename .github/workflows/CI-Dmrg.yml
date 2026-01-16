@@ -1,7 +1,7 @@
 # This workflow will run the tests of the package on multiple operating systems
 # It was taken from https://bjack205.github.io/JuliaTemplateRepo.jl/dev/CI.html 
 
-name: Julia application - Dmrg
+name: CI - Dmrg
 on:
   push:
     paths: 
