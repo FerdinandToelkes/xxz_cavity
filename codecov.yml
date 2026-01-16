@@ -1,4 +1,5 @@
-# this file was taken from https://docs.codecov.com/docs/flags
+# This file configures Codecov flag management for the project's monorepo structure
+# It was taken from https://docs.codecov.com/docs/flags
 
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
