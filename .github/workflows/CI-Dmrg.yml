@@ -40,8 +40,7 @@ jobs:
           project: methods/Dmrg
           coverage: true
 
-      # Use Coverage.jl with official uploader to codecov.io
-      - name: Process and upload coverage with Coverage.jl
+      - name: Process and upload coverage with Coverage.jl to Codecov
         run: |
           julia -e '
             using Pkg; Pkg.add("Coverage")
