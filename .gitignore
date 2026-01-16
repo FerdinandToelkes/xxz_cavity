@@ -58,7 +58,7 @@ cover/
 
 # Unit test / coverage reports (Julia only)
 *.cov
-coverage.info
+lcov.info
 
 # Translations
 *.mo
