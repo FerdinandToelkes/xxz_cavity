@@ -1,5 +1,5 @@
 # This workflow will run the tests of the package on multiple operating systems
-# It was taken from https://bjack205.github.io/JuliaTemplateRepo.jl/dev/CI.html 
+# It was taken from https://github.com/JuliaCI/Coverage.jl/blob/master/examples/ci/github-actions.yml 
 
 name: CI - Dmrg
 on:
@@ -41,7 +41,10 @@ jobs:
           julia -e '
             using Pkg; Pkg.add("Coverage")
             using Coverage
-            process_and_upload(service=:codecov, folder="methods/Dmrg/src")
+            process_and_upload(
+              service=:codecov, 
+              folder="methods/Dmrg/src",
+              codecov_flags=["Dmrg"])
           '
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
