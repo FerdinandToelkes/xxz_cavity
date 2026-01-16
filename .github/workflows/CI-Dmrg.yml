@@ -12,6 +12,7 @@ on:
   pull_request:
     paths: 
       - 'methods/Dmrg/**'
+  workflow_dispatch:
     
 jobs:
   test:
