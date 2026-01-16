@@ -1,27 +1,34 @@
 # xxz_cavity
 
-[![Python application](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/python-app-ed.yml/badge.svg)](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/python-app-ed.yml)
+[![CI - ED](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/CI-ed.yml/badge.svg)](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/CI-ed.yml)
+[![CI - DMRG](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/CI-Dmrg.yml/badge.svg)](https://github.com/FerdinandToelkes/xxz_cavity/actions/workflows/CI-Dmrg.yml)
+[![Codecov](https://codecov.io/gh/FerdinandToelkes/xxz_cavity/branch/main/graph/badge.svg)](https://codecov.io/gh/FerdinandToelkes/xxz_cavity)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+---
 
-# Notes on the theoretical background
+## Notes on the theoretical background
 
+### The Hamiltonian
+Brief overview of the model and its physical origin  
+(e.g. Hubbard/XXZ limit, see Nolting).
 
-## The Hamiltonian
+### Exact Diagonalization
+Explanation of the ED implementation and design philosophy.
 
-- quickly brush over origin of Hubbard model -> nolting as reference
+### Density Matrix Renormalization Group (DMRG)
+Outline of the DMRG approach and its numerical structure.
 
-## Exact Diagonalization
+---
 
-- explain code philosophy
+## Contributing
 
-## Denisity Matrix Renormalization Group (DMRG)
+Contributions are welcome. Please open an issue or submit a pull request.
 
+---
 
-# Contributing
+## License
 
-If you would like to contribute to the project, please open an issue or a pull request.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-# License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
