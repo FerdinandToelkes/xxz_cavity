@@ -6,7 +6,6 @@ const _PAULI_SYMBOLS = (:X, :Y, :Z)
 
 
 
-
 # the following functions are not used, but were merely used to 
 # test how ITensors works
 
@@ -70,7 +69,7 @@ function xxz_mpo()
 end
 
 """
-    heisenberg_mpo(sites::Vector{<:Index}, J::Real, Jz::Real) -> MPO
+    heisenberg_mpo(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0) -> MPO
 
 Construct the spin-1/2 Heisenberg (XXZ) Hamiltonian
 
@@ -83,8 +82,8 @@ Throws an `ArgumentError` if fewer than two sites are provided or if
 """
 function heisenberg_mpo(
     sites::Vector{<:Index},
-    J::Real,
-    Jz::Real,
+    J::Real=1.0,
+    Jz::Real=1.0,
 )::MPO
     _check_spinhalf_sites(sites)
 
@@ -102,7 +101,7 @@ function heisenberg_mpo(
 end
 
 """
-    heisenberg_manual_mpo(sites::Vector{<:Index}, J::Real, Jz::Real) -> MPO
+    heisenberg_manual_mpo(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0) -> MPO
 
 Construct the spin-1/2 Heisenberg (XXZ) Hamiltonian by explicit MPO
 construction with bond dimension 5.
@@ -110,7 +109,11 @@ construction with bond dimension 5.
 Throws an `ArgumentError` if fewer than two sites are provided or if
 `sites` are not spin-1/2 indices.
 """
-function heisenberg_manual_mpo(sites::Vector{<:Index}, J::Real, Jz::Real)::MPO
+function heisenberg_manual_mpo(
+    sites::Vector{<:Index}, 
+    J::Real=1.0, 
+    Jz::Real=1.0
+)::MPO
     _check_spinhalf_sites(sites)
 
     L = length(sites)
@@ -163,27 +166,9 @@ function heisenberg_manual_mpo(sites::Vector{<:Index}, J::Real, Jz::Real)::MPO
     return MPO(W)
 end
 
-# let 
-#     L = 3
-#     sites = siteinds("S=1/2", L)
-#     h = heisenberg_mpo(sites, 1.0, 1.0)
-#     # @show h
-#     # for i in 1:L
-#     #     W = h[i]
-#     #     @show W
-#     # end
-
-#     h_man = heisenberg_manual_mpo(sites, 1.0, 1.0)
-
-#     random_state = random_mps(sites; linkdims=10)
-#     @show inner(random_state', h, random_state)
-#     @show inner(random_state', h_man, random_state)
-    
-# end
-
 
 """
-    pauli_sum_mpo(sites::Vector{<:Index}, a::Real; pauli::Symbol = :X) -> MPO
+    pauli_sum_mpo(sites::Vector{<:Index}, a::Real = 1.0, pauli::Symbol = :X) -> MPO
 
 Construct an MPO representing
 
@@ -195,7 +180,7 @@ Throw an `ArgumentError` if `pauli ∉ (:X, :Y, :Z)` or if `sites` are not spin-
 """
 function pauli_sum_mpo(
     sites::Vector{<:Index},
-    a::Real;
+    a::Real = 1.0,
     pauli::Symbol = :X,
 )::MPO
     _check_spinhalf_sites(sites)
@@ -214,7 +199,7 @@ function pauli_sum_mpo(
 end
 
 """
-    pauli_sum_manual_mpo(sites::Vector{<:Index}, a::Real; pauli::Symbol = :X) -> MPO
+    pauli_sum_manual_mpo(sites::Vector{<:Index}, a::Real = 1.0, pauli::Symbol = :X) -> MPO
 
 Construct an MPO representing
 
@@ -226,7 +211,7 @@ Throw an `ArgumentError` if `pauli ∉ (:X, :Y, :Z)` or if `sites` are not spin-
 """
 function pauli_sum_manual_mpo(
     sites::Vector{<:Index},
-    a::Real;
+    a::Real = 1.0,
     pauli::Symbol = :X,
 )::MPO
     _check_spinhalf_sites(sites)
