@@ -2,13 +2,15 @@
 
 Welcome to the documentation page. 
 
-!!! note "Quick-Glimpse Tutorial"
-    This tutorial just offered a quick glimpse on Julia's built-in documentation system, make sure to read the docs for more.
+!!! note "Under Construction"
+    This documentation is currently being updated to reflect recent changes in the codebase. Some sections may be incomplete or missing.
 
 ```@docs
 Dmrg
-heisenberg_mpo
-heisenberg_manual_mpo
-pauli_matrix_sum_mpo
-pauli_matrix_sum_manual_mpo
+xxz
+xxz_manual
+heisenberg
+heisenberg_manual
+pauli_sum
+pauli_sum_manual
 ```
