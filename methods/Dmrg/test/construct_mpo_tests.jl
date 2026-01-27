@@ -1,6 +1,7 @@
 using Dmrg
 using ITensors
 using ITensorMPS
+using LinearAlgebra
 using Random
 using Test
 
@@ -12,22 +13,26 @@ const ATOL = 1e-12  # absolute tolerance for inner product comparisons
 """
     test_equivalence(args...) -> Nothing
 
-Test equivalence of two MPOs by comparing expectation values on
-random MPS for given sites.
+Test equivalence of two MPOs by comparing expectation values on random MPS for given
+sites. Note that the MPOs do not need to be identical, only their action on states must
+be the same.
 """
 function test_equivalence(
     sites::Vector{<:Index},
     H::MPO,
     H_manual::MPO;
-    product_state::String="Up",
+    product_state::String="0",
     rng::AbstractRNG=Random.default_rng(),
     ntests::Int=3
 )::Nothing
-    # deterministic product state
+    # check Frobenius norm of difference between MPOs (gauge independent)
+    @test isapprox(norm(H - H_manual), 0.0; atol=ATOL)
+
+    # action on simple product state
     ψ_0 = productMPS(sites, fill(product_state, length(sites)))
     @test isapprox(inner(ψ_0', H, ψ_0), inner(ψ_0', H_manual, ψ_0); atol=ATOL)
 
-    # random MPS states
+    # action on random MPS states
     for _ in 1:ntests
         ψ = random_mps(rng, sites; linkdims=10)
         @test isapprox(inner(ψ', H, ψ), inner(ψ', H_manual, ψ); atol=ATOL)
@@ -57,6 +62,26 @@ end
 
 
 # Signature-specific helpers
+"""
+    test_xxz_cavity_equivalence(args...) -> Nothing
+
+Test equivalence of XXZ cavity MPO constructed via OpSum vs manual construction.
+"""
+function test_xxz_cavity_equivalence(
+    sites::Vector{<:Index},
+    t::Real,
+    U::Real,
+    g::Real,
+    omega::Real,
+    rng::AbstractRNG
+)
+    H = Dmrg.xxz_cavity(sites, t, U, g, omega)
+    Hm = Dmrg.xxz_cavity_manual(sites, t, U, g, omega)
+    test_equivalence(sites, H, Hm; rng=rng, product_state="0")
+    return nothing
+end
+
+
 """
     test_xxz_equivalence(args...) -> Nothing
 
@@ -108,15 +133,118 @@ function test_pauli_equivalence(
     return nothing
 end
 
+# For comparison to pen and paper
+"""
+    expected_peierls_phase(g::Real, N_ph::Int) -> Matrix{ComplexF64}
+
+Helper function to compute expected Peierls phase matrix for small N_ph.
+See tablet notes for computation of exp(ig(a + a^+)) matrices.
+
+# Arguments:
+- `g::Real`: Coupling strength.
+- `N_ph::Int`: Maximum number of photons (dimension of bosonic site minus one).
+
+# Returns:
+- `Matrix{ComplexF64}`: The expected Peierls phase matrix.
+
+# Throws:
+- `ArgumentError`: If `N_ph` is not supported.
+"""
+function expected_peierls_phase(g::Real, N_ph::Int)::Matrix{ComplexF64}
+    if N_ph == 1
+        return [
+            cos(g) 1im*sin(g);
+            1im*sin(g) cos(g)
+        ]
+
+    elseif N_ph == 2
+        s3 = sqrt(3)
+        return (1/3)*[
+            cos(s3*g)+2  1im*s3*sin(s3*g)    sqrt(2)*(cos(s3*g)-1);
+            1im*s3*sin(s3*g)  3*cos(s3*g)    1im*sqrt(6)*sin(s3*g);
+            sqrt(2)*(cos(s3*g)-1) 1im*sqrt(6)*sin(s3*g) 2*cos(s3*g) + 1
+        ]
+    else
+        throw(ArgumentError("Unsupported photon number"))
+    end
+end
+
+@testset "Peierls phase matrix construction" begin
+    g_values = [0, 1, π/2, 2, π, 4, 3*π/2]
+    N_ph_values = [1, 2]
+
+    for g in g_values, N_ph in N_ph_values
+        dim_ph = N_ph + 1
+        peierls_phase = Dmrg.build_peierls_phase(g, dim_ph)
+        expected_phase = expected_peierls_phase(g, N_ph)
+        @test isapprox(peierls_phase, expected_phase; atol=ATOL)
+    end
+end
+
+# ------------------------------
+# XXZ cavity MPO tests
+# ------------------------------
+
+@testset "XXZ cavity MPO: OpSum vs manual construction" begin
+    # test setup
+    rng = MersenneTwister(1234)
+    Ls = (2, 3, 4)
+    ts = (1.0, -0.5)
+    Us = (2.0, -1.0)
+    gs = (0.5, -0.3)
+    omegas = (1.0, 2.0)
+    dim_phs = (2, 10, 20)
+
+    @testset "valid constructions" begin
+        for L in Ls, t in ts, U in Us, g in gs, omega in omegas, dim_ph in dim_phs
+            @testset "L=$L, t=$t, U=$U, g=$g, omega=$omega" begin
+                f_sites = siteinds("Fermion", L)
+                b_site = siteind("Boson", 1; dim=dim_ph)
+                sites = vcat(f_sites, [b_site])
+                test_xxz_cavity_equivalence(sites, t, U, g, omega, rng)
+            end
+        end
+    end
+
+    @testset "invalid sites" begin
+        invalid_sites = (
+            [siteinds("Fermion", 1); siteind("Boson", 1; dim=2)], # too short chain
+            [siteinds("S=1/2", 3); siteind("Boson", 1; dim=2)], # wrong particle type
+            [siteinds("Fermion", 3); siteind("Fermion", 1)], # wrong particle
+            siteinds("Fermion", 2) # missing bosonic site
+        )
+        println(typeof(invalid_sites))
+        test_invalid_sites_errors(
+            Dmrg.xxz_cavity,
+            Dmrg.xxz_cavity_manual,
+            invalid_sites,
+        )
+    end
+
+    @testset "zero-coupling sanity check" begin
+        f_sites = siteinds("Fermion", 4)
+        b_site = siteind("Boson", 1; dim=2) # otherwise error in MPO construction
+        sites = vcat(f_sites, b_site)
+        ψ = random_mps(rng, sites; linkdims = 5)
+        H = Dmrg.xxz_cavity(sites, 0.0, 0.0, 0.0, 0.0)
+        @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)
+    end
+end
+
+
 # ------------------------------
 # XXZ MPO tests
 # ------------------------------
 
 @testset "XXZ MPO: OpSum vs manual construction" begin
+    # test setup
     rng = MersenneTwister(1234)
+    Ls = (2, 6)
+    ts = (1.0)
+    Us = (2.0, -1.0)
 
     @testset "valid constructions" begin
-        for L in (2, 4, 6), t in (1.0, -0.5), U in (2.0, -1.0)
+        for L in Ls, t in ts, U in Us
             @testset "L=$L, t=$t, U=$U" begin
                 sites = siteinds("Fermion", L)
                 test_xxz_equivalence(sites, t, U, rng)
@@ -146,10 +274,14 @@ end
 # ------------------------------
 
 @testset "Heisenberg MPO: OpSum vs manual construction" begin
+    # test setup
     rng = MersenneTwister(1234)
+    Ls = (2, 6)
+    Js = (2.5)
+    Jzs = (1.0, -1.0)
 
     @testset "valid constructions" begin
-        for L in (2, 4, 6), J in (2.5, -0.2), Jz in (1.0, -1.0)
+        for L in Ls, J in Js, Jz in Jzs
             @testset "L=$L, J=$J, Jz=$Jz" begin
                 sites = siteinds("S=1/2", L)
                 test_heisenberg_equivalence(sites, J, Jz, rng)
@@ -179,11 +311,14 @@ end
 # ------------------------------
 
 @testset "Pauli sum MPO: OpSum vs manual construction" begin
-    # fixed RNG for reproducibility
+    # test setup
     rng = MersenneTwister(1234)
+    Ls = (2, 5)
+    as = (-1.2)
+    paulis = (:X, :Y, :Z)
 
     @testset "valid constructions" begin
-        for L in (2, 3, 5), a in (0.7, -1.2), pauli in (:X, :Y, :Z)
+        for L in Ls, a in as, pauli in paulis
             @testset "L=$L, a=$a, pauli=$pauli" begin
                 sites = siteinds("S=1/2", L)
                 test_pauli_equivalence(sites, a, pauli, rng)

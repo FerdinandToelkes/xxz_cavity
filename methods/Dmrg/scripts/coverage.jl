@@ -2,7 +2,7 @@
 This script generates a coverage report in LCOV format for the Dmrg module
 This can be used by the VS Code Coverage Gutters extension to display coverage info
 
-Execute this script by running from the REPL by running: 
+Execute this script by running from the REPL by running:
 
     julia> include("scripts/coverage.jl")
 
@@ -12,7 +12,9 @@ Use the command pallette "Coverage Gutters: Watch" to use the generated lcov.inf
 to display coverage info directly in the editor
 """
 
-using Pkg, Coverage, Coverage.LCOV
+using Pkg
+using Coverage
+using Coverage.LCOV
 
 target_dirs = ["src", "test"]
 file_name = "lcov.info"

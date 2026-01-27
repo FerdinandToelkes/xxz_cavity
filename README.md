@@ -39,9 +39,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Exact Diagonalization
 
 ### To Do
-- compute simple example to see that manual MPO strugles with fermionic signs
-- try to compare xxz hamiltonian with heisenberg model to see, that JW strings work correctly
-- do the same later for cavity hamiltonian
+- compute simple example to see that manual MPO strugles with fermionic signs -> add it to notes
+
 
 - run_simulation also for no photons and no coupling case
     - use FFT to transform ground states into momentum space (only for periodic boundary conditions) and compare to dispersion relation

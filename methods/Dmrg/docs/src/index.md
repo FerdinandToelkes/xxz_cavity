@@ -7,6 +7,8 @@ Welcome to the documentation page.
 
 ```@docs
 Dmrg
+xxz_cavity
+xxz_cavity_manual
 xxz
 xxz_manual
 heisenberg

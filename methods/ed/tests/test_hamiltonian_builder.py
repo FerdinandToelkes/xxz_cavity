@@ -170,6 +170,8 @@ def expected_peierls_matrix(g: float, N_ph: int) -> np.ndarray:
         N_ph (int): Maximum photon number.
     Returns:
         np.ndarray: The expected Peierls phase matrix.
+    Raises:
+        ValueError: If N_ph is not supported.
     """
     if N_ph == 1:
         return np.array([
@@ -177,15 +179,15 @@ def expected_peierls_matrix(g: float, N_ph: int) -> np.ndarray:
             [1j*np.sin(g), np.cos(g)]
         ])
 
-    if N_ph == 2:
+    elif N_ph == 2:
         s3 = np.sqrt(3)
         return (1/3)*np.array([
             [np.cos(s3*g)+2,  1j*s3*np.sin(s3*g),    np.sqrt(2)*(np.cos(s3*g)-1)],
             [1j*s3*np.sin(s3*g),  3*np.cos(s3*g),    1j*np.sqrt(6)*np.sin(s3*g)],
             [np.sqrt(2)*(np.cos(s3*g)-1), 1j*np.sqrt(6)*np.sin(s3*g), 2*np.cos(s3*g) + 1]
         ])
-
-    raise ValueError("Unsupported photon number")
+    else:
+        raise ValueError("Unsupported photon number")
 
 
 @pytest.mark.parametrize("N_ph", [1, 2])
