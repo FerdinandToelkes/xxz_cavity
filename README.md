@@ -39,7 +39,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Exact Diagonalization
 
 ### To Do
-- compute simple example to see that manual MPO strugles with fermionic signs -> add it to notes
+- open vs periodic boundary conditions
 
 
 - run_simulation also for no photons and no coupling case
@@ -59,7 +59,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## DMRG
 
-- understand how symmetries are introduced to DMRG
 - switch to periodic boundary conditions -> how has passetti done it?
 - see https://github.com/GiacomoPassetti/dmrg_cav/blob/main/Peier_v1(trivial).py
 

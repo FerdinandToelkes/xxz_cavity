@@ -2,7 +2,7 @@
 
 julia_version = "1.12.4"
 manifest_format = "2.0"
-project_hash = "ec8c31735d04e9868d4bc99c3cf2f6bad0d70189"
+project_hash = "c9f5b6a6f83df3b1e676e1c737ef0a537b8dbdfc"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -1028,7 +1028,7 @@ uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 version = "1.3.1+2"
 
 [[deps.dmrg]]
-deps = ["Coverage", "Documenter", "ITensorMPS", "ITensors", "PackageCompiler", "Random", "Test"]
+deps = ["Coverage", "Documenter", "ITensorMPS", "ITensors", "LinearAlgebra", "PackageCompiler", "Random", "Test"]
 path = "."
 uuid = "462d8d2f-8cb6-4d6b-98a1-b82acfe75e73"
 version = "0.1.0"

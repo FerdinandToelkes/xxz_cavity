@@ -88,6 +88,7 @@ function build_peierls_phase(g::Real, dim_ph::Int)::Matrix{ComplexF64}
     return ComplexF64.(U) # ensure complex type
 end
 
+
 """
     xxz_cavity(
         sites::Vector{<:Index},
@@ -133,17 +134,14 @@ function xxz_cavity(
 
     L = length(f_sites) # number of fermionic sites
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
-    g = g / sqrt(L)
-    dim_ph = dim(b_site)
 
-    peierls_phase = build_peierls_phase(g, dim_ph)
-
+    P = build_peierls_phase(g, dim(b_site))
     os = OpSum()
     b = L + 1 # boson site index
     for j in 1:(L-1)
         # dressed hopping
-        os += -t, peierls_phase, b, "c†", j, "c", j+1
-        os += -t, peierls_phase', b, "c†", j+1, "c", j
+        os += -t, P, b, "c†", j, "c", j+1
+        os += -t, P', b, "c†", j+1, "c", j
         # interaction term
         os += U, "n", j, "n", j+1
     end
@@ -153,8 +151,6 @@ function xxz_cavity(
 
     return MPO(os, sites)
 end
-
-
 
 """
     xxz_cavity_manual(
@@ -170,6 +166,8 @@ construction with bond dimension 8:
 ```math
 H = \\sum_{j=1}^{L-1} -t\\left( e^{i\\frac{g}{\\sqrt{L}}(a + a^\\dagger)} c^\\dagger_j c_{j+1} + e^{-i\\frac{g}{\\sqrt{L}}(a + a^\\dagger)} c^\\dagger_{j+1} c_{j} \\right) + \\sum_{j=1}^{L-1} U n_j n_{j+1} + \\Omega N_{\\text{ph}} \\, .
 ```
+The construction is based on the finite state machine (FSM) approach and details can
+be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices, with the last index being the bosonic site.
@@ -217,7 +215,7 @@ function xxz_cavity_manual(
     f_sites = sites[1:end-1]
     b_site = sites[end]
     _check_spinless_fermions_sites(f_sites)
-    _check_boson_sites([b_site]) # wrap in vector for checking
+    #_check_boson_sites([b_site]) # wrap in vector for checking
 
     L_mpo = length(sites) # number of sites in MPO (fermionic + bosonic)
     L = length(f_sites) # number of fermionic sites
@@ -231,7 +229,6 @@ function xxz_cavity_manual(
 
     # Local operators on bosonic site
     dim_ph = dim(b_site)
-    g = g / sqrt(L)
     id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
     n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
     peierls_phase = build_peierls_phase(g, dim_ph)
@@ -328,7 +325,8 @@ with bond dimension 5:
 H = \\sum_{j=1}^{L-1} -t(c^\\dagger_j c_{j+1} + c_j c^\\dagger_{j+1}) + \\sum_{j=1}^{L-1} U n_j n_{j+1} \\, .
 ```
 We denote the Hamiltonian acting on spinless fermions as the Heisenberg
-Hamiltonian and the one acting on spins as the XXZ Hamiltonian.
+Hamiltonian and the one acting on spins as the XXZ Hamiltonian. The construction is based
+on the finite state machine (FSM) approach and details can be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spinless fermions.
@@ -464,7 +462,8 @@ H = \\sum_{j=1}^{L-1} \\frac{J}{2} (S^+_j S^-_{j+1} + S^-_j S^+_{j+1}) + J_z S^z
 ```
 by explicit MPO construction with bond dimension 5. We denote the Hamiltonian
 acting on spins as the Heisenberg Hamiltonian and the one acting on spinless
-fermions as the XXZ Hamiltonian.
+fermions as the XXZ Hamiltonian. The construction is based on the finite state
+machine (FSM) approach and details can be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
@@ -577,6 +576,8 @@ Construct an MPO representing
 H = a * \\sum_{j=1}^L \\sigma_j \\, ,
 ```
 where σ_j is the Pauli matrix specified by `pauli` acting on sites with spin 1/2 particles.
+The construction is based on the finite state machine (FSM) approach and details can
+be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
