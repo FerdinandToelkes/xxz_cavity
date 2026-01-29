@@ -7,7 +7,7 @@
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle)
 
 ---
-The goal of this project is to study the extended Hubbard Hamiltonian for a one-dimensional lattice of spinless fermions. These fermions are coupled to a single cavity mode within the dipole approximation, i.e. the mode is spatially uniform across the lattice. The Hamiltonian reads:
+The goal of this project is to study the extended Hubbard Hamiltonian for a one-dimensional lattice of spinless fermions at half-filling. These fermions are coupled to a single cavity mode within the dipole approximation, i.e. the mode is spatially uniform across the lattice. The Hamiltonian reads:
 ```math
 H = \sum_{j=1}^{L-1} -t \left( e^{i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_j c_{j+1} + e^{-i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_{j+1} c_{j} \right) + \sum_{j=1}^{L-1} U n_j n_{j+1} + \Omega N_{\text{ph}} \, .
 ```
@@ -28,19 +28,31 @@ I aim to provide a concise overview of the relevant concepts involved, as well a
 
 In the absence of coupling to electromagnetic modes, the Hamiltonian reduces to the extended Hubbard model, which can be derived by following, for example, the book *Grundkurs Theoretische Physik 7 – Viel-Teilchen-Theorie* by W. Nolting. The introduction of the Peierls phase is discussed, for instance, in the paper [Gauge fixing for strongly correlated electrons coupled to quantum light](https://link.aps.org/doi/10.1103/PhysRevB.103.075131) by Dmytruk and Schiró or in [Electromagnetic coupling in tight-binding models for strongly correlated light and matter](https://link.aps.org/doi/10.1103/PhysRevB.101.205140) by Li et al., both of which are also cited by Passetti et al. Further discussion of the first of these two papers can be found in my notes.
 
-### Exact diagonalization
+### Exact diagonalization (ED)
+
+Exact diagonalization (ED) is a natural starting point, as it is conceptually straightforward and allows one to become familiar with the Hamiltonian under investigation. The basic idea of ED is to construct a matrix representation of the Hamiltonian by evaluating its action on the occupation-number basis. Once this matrix representation is obtained, standard numerical algorithms can be used to compute the ground-state energy and the corresponding eigenstate.
+
+For Hamiltonians composed of few-site operators, such as on-site interactions or nearest-neighbor hopping terms, the resulting matrix is known to be sparse. This sparsity can be exploited to construct the Hamiltonian efficiently, and to apply algorithms such as the Lanczos method that are well suited for computing a small number of extremal eigenstates. If the system exhibits symmetries, the Hamiltonian acquires a block-diagonal structure, with each block corresponding to a fixed quantum number. In this case, conserved quantities, such as the total number of fermions, can be used to restrict the construction to a single symmetry sector, thereby significantly reducing the effective dimension of the problem.
+
+The main limitation of ED is its restriction to small system sizes. The dimension of the Hilbert space, and hence of the Hamiltonian matrix, grows exponentially with system size, which quickly renders both memory requirements and runtimes prohibitive.
+
+I wrote my own ED code, loosely following the paper [Introduction to Hubbard Model and Exact Diagonalization](https://arxiv.org/pdf/0807.4878) by Jafari and the tutorial [Writing an Exact Diagonalization (ED) Routine for the Hubbard
+Model Hamiltonian](https://stanford.edu/~xunger08/Exact%20Diagonalization%20Tutorial.pdf) by Ding. Since I have a fermionic system which is coupled to a bosonic mode, I have fermionic and bosonic basis states. For the fermionic one, I employ bit algebra 
+
 Explanation of the ED implementation and design philosophy.
 
 ### Density matrix renormalization group (DMRG)
+
+
 Outline of the DMRG approach and its numerical structure.
 
-### Neural quantum states NQS
+### Neural quantum states (NQS)
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please open an issue or submit a pull request.
+Contributions are always welcome. Please open an issue or submit a pull request.
 
 ---
 
