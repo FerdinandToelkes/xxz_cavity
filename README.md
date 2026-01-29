@@ -7,12 +7,22 @@
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle)
 
 ---
+The goal of this project is to study the extended Hubbard Hamiltonian for a one-dimensional lattice of spinless fermions. These fermions are coupled to a single cavity mode within the dipole approximation, i.e. the mode is spatially uniform across the lattice. The Hamiltonian reads:
+```math
+H = \sum_{j=1}^{L-1} -t \left( e^{i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_j c_{j+1} + e^{-i\frac{g}{\\sqrt{L}}(a + a^\dagger)} c^\dagger_{j+1} c_{j} \right) + \sum_{j=1}^{L-1} U n_j n_{j+1} + \Omega N_{\text{ph}} \, .
+```
+Passetti et al. examined this Hamiltonian in this [paper](https://link.aps.org/doi/10.1103/PhysRevLett.131.023601) using, among other methods, the density matrix renormalization group (DMRG) algorithm. The aim of this project is to use this system to benchmark various numerical approaches, namely
+- Exact diagonalization (ED)
+- Density matrix renormalization group (DMRG)
+- Neural quantum states (NQS)
 
 ## Notes on the theoretical background
 
+I aim to provide a concise overview of the relevant concepts involved, as well as pointers to resources that may be useful when starting to work on this topic. I have attached my personal, handwritten notes here for readers interested in additional details. These notes have not been rigorously proofread, so please excuse any mistakes they may/probably contain.
+
 ### The Hamiltonian
-Brief overview of the model and its physical origin  
-(e.g. Hubbard/XXZ limit, see Nolting).
+
+In the absence of coupling to electromagnetic modes, the Hamiltonian reduces to the extended Hubbard model, which can be derived by following, for example, the book *Grundkurs Theoretische Physik 7 – Viel-Teilchen-Theorie* by W. Nolting. The introduction of the Peierls phase is discussed, for instance, in this [paper](https://link.aps.org/doi/10.1103/PhysRevB.103.075131) by Dmytruk and Schiró or in this [paper](https://link.aps.org/doi/10.1103/PhysRevB.101.205140) by Li et al., both of which are also cited by Passetti et al. Further discussion of the first of these two papers can be found in my notes.
 
 ### Exact Diagonalization
 Explanation of the ED implementation and design philosophy.
