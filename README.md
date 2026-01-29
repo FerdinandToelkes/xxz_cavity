@@ -9,26 +9,32 @@
 ---
 The goal of this project is to study the extended Hubbard Hamiltonian for a one-dimensional lattice of spinless fermions. These fermions are coupled to a single cavity mode within the dipole approximation, i.e. the mode is spatially uniform across the lattice. The Hamiltonian reads:
 ```math
-H = \sum_{j=1}^{L-1} -t \left( e^{i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_j c_{j+1} + e^{-i\frac{g}{\\sqrt{L}}(a + a^\dagger)} c^\dagger_{j+1} c_{j} \right) + \sum_{j=1}^{L-1} U n_j n_{j+1} + \Omega N_{\text{ph}} \, .
+H = \sum_{j=1}^{L-1} -t \left( e^{i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_j c_{j+1} + e^{-i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_{j+1} c_{j} \right) + \sum_{j=1}^{L-1} U n_j n_{j+1} + \Omega N_{\text{ph}} \, .
 ```
-Passetti et al. examined this Hamiltonian in this [paper](https://link.aps.org/doi/10.1103/PhysRevLett.131.023601) using, among other methods, the density matrix renormalization group (DMRG) algorithm. The aim of this project is to use this system to benchmark various numerical approaches, namely
+Passetti et al. examined this Hamiltonian in the paper [Cavity Light-Matter Entanglement through Quantum Fluctuations](https://link.aps.org/doi/10.1103/PhysRevLett.131.023601) using, among other methods, the density matrix renormalization group (DMRG) algorithm. The aim of this project is to use this system to benchmark various numerical approaches, namely
 - Exact diagonalization (ED)
 - Density matrix renormalization group (DMRG)
 - Neural quantum states (NQS)
 
+## Project Structure
+
+The repository is organized as a monorepo containing multiple method-specific subprojects. Each method is implemented as a self-contained package ([Julia](https://pkgdocs.julialang.org/dev/creating-packages/#Adding-tests-to-the-package) or [Python](https://packaging.python.org/en/latest/tutorials/packaging-projects/)) with its own dependencies, source code, and scripts for data generation. A shared configuration and a common output format enable direct comparison between methods. Each method-specific `scripts` directory contains executable entry points for producing benchmark data, which are written to `numpy`-compatible files. Top-level analysis and comparison scripts (to be added) operate on these outputs to facilitate a direct comparison between different numerical approaches. The benchmarked quantities include the entanglement entropy, the photon number, the photon number distribution, and the longest-range correlation, as these observables were also investigated by Passetti et al.
+
 ## Notes on the theoretical background
 
-I aim to provide a concise overview of the relevant concepts involved, as well as pointers to resources that may be useful when starting to work on this topic. I have attached my personal, handwritten notes here for readers interested in additional details. These notes have not been rigorously proofread, so please excuse any mistakes they may/probably contain.
+I aim to provide a concise overview of the relevant concepts involved, as well as pointers to resources that may be useful when starting to work on this topic. I have attached my personal, handwritten notes here for readers interested in additional details. These notes have not been rigorously proofread, so please excuse any mistakes they may/probably contain. Hopefully it is possible to decode my handwriting.
 
 ### The Hamiltonian
 
-In the absence of coupling to electromagnetic modes, the Hamiltonian reduces to the extended Hubbard model, which can be derived by following, for example, the book *Grundkurs Theoretische Physik 7 – Viel-Teilchen-Theorie* by W. Nolting. The introduction of the Peierls phase is discussed, for instance, in this [paper](https://link.aps.org/doi/10.1103/PhysRevB.103.075131) by Dmytruk and Schiró or in this [paper](https://link.aps.org/doi/10.1103/PhysRevB.101.205140) by Li et al., both of which are also cited by Passetti et al. Further discussion of the first of these two papers can be found in my notes.
+In the absence of coupling to electromagnetic modes, the Hamiltonian reduces to the extended Hubbard model, which can be derived by following, for example, the book *Grundkurs Theoretische Physik 7 – Viel-Teilchen-Theorie* by W. Nolting. The introduction of the Peierls phase is discussed, for instance, in the paper [Gauge fixing for strongly correlated electrons coupled to quantum light](https://link.aps.org/doi/10.1103/PhysRevB.103.075131) by Dmytruk and Schiró or in [Electromagnetic coupling in tight-binding models for strongly correlated light and matter](https://link.aps.org/doi/10.1103/PhysRevB.101.205140) by Li et al., both of which are also cited by Passetti et al. Further discussion of the first of these two papers can be found in my notes.
 
-### Exact Diagonalization
+### Exact diagonalization
 Explanation of the ED implementation and design philosophy.
 
-### Density Matrix Renormalization Group (DMRG)
+### Density matrix renormalization group (DMRG)
 Outline of the DMRG approach and its numerical structure.
+
+### Neural quantum states NQS
 
 ---
 
