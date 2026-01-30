@@ -52,7 +52,9 @@ This opens the Julia REPL with the `Dmrg` package and its dependencies loaded. W
 ```bash
 julia --project=. path/to/script.jl
 ```
-For improved performance, especially with larger projects, it is recommended to consult the ITensor documentation, which also describes how to precompile a custom sysimage to significantly reduce compilation times.
+For improved performance, especially with larger projects, I recommended to consult the [ITensor documentation](https://docs.itensor.org/ITensors/stable/getting_started/RunningCodes.html), which also describes how to precompile a custom sysimage to significantly reduce compilation times.
+
+TODO: Add installation guide for package to compare the results. 
 
 ## Notes on the theoretical background
 
