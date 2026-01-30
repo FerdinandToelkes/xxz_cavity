@@ -16,11 +16,43 @@ Passetti et al. examined this Hamiltonian in the paper [Cavity Light-Matter Enta
 - Density matrix renormalization group (DMRG)
 - Neural quantum states (NQS)
 
-## Project Structure
+## List of contents
+
+1. [Project Structure](#project-structure)
+2. [Installation guide](#installation-guide)
+3. [Notes on the theoretical background](#notes-on-the-theoretical-background)
+   - [The Hamiltonian](#the-hamiltonian)
+   - [Exact diagonalization (ED)](#exact-diagonalization-ed)
+   - [Density matrix renormalization group (DMRG)](#density-matrix-renormalization-group-dmrg)
+   - [Neural quantum states (NQS)](#neural-quantum-states-nqs)
+5. [Contributing](#contributing)
+6. [License](#license)
+
+## Project structure
 
 The repository is organized as a monorepo containing multiple method-specific subprojects. Each method is implemented as a self-contained package ([Julia](https://pkgdocs.julialang.org/dev/creating-packages/#Adding-tests-to-the-package) or [Python](https://packaging.python.org/en/latest/tutorials/packaging-projects/)) with its own dependencies, source code, and scripts for data generation. A shared configuration and a common output format enable direct comparison between methods. Each method-specific `scripts` directory contains executable entry points for producing benchmark data, which are written to `numpy`-compatible files. Top-level analysis and comparison scripts (to be added) operate on these outputs to facilitate a direct comparison between different numerical approaches. The benchmarked quantities include the entanglement entropy, the photon number, the photon number distribution, and the longest-range correlation, as these observables were also investigated by Passetti et al.
 
 ## Installation guide
+
+Since this repository is organized as a monorepo, it contains several independent packages corresponding to the different numerical methods. To use a particular method, navigate to the directory with the same name and install the corresponding package.
+
+For the Python-based implementations, a Conda environment must be created and activated using the provided `environment.yml` file. The package can then be installed in editable mode, for example:
+```bash
+cd /methods/ed
+conda env create --file environment.yml
+conda activate ed
+pip install -e
+```
+For the Julia-based implementations, it is sufficient to start Julia with the project environment activated:
+```bash
+cd /methods/Dmrg
+julia --project=.
+```
+This opens the Julia REPL with the `Dmrg` package and its dependencies loaded. Within the REPL, scripts can be executed using the `include` function by passing the path to the desired script. Alternatively, scripts can be run directly from the command line via
+```bash
+julia --project=. path/to/script.jl
+```
+For improved performance, especially with larger projects, it is recommended to consult the ITensor documentation, which also describes how to precompile a custom sysimage to significantly reduce compilation times.
 
 ## Notes on the theoretical background
 
@@ -46,6 +78,7 @@ As the bosonic sector can, in principle, host an infinite number of photons, a p
 I carried out analytical calculations for specific limiting cases to validate both the construction of the Hamiltonian and the implementation of the Peierls phase. These calculations are documented in my handwritten notes, and their results are used in a hard-coded manner within the unit tests.
 
 ### Density matrix renormalization group (DMRG)
+
 The density matrix renormalization group (DMRG) algorithm is a variational method based on matrix product states (MPS). Within the tensor network formalism, one can show that DMRG provides an efficient approach for computing ground states of one-dimensional gapped Hamiltonians. To familiarize myself with the basic ideas of tensor networks and MPS, I relied primarily on the papers [A Practical Introduction to Tensor Networks: Matrix Product States and Projected Entangled Pair States](http://arxiv.org/abs/1306.2164) by Orús and 
 [Tensor Networks in a Nutshell](http://arxiv.org/abs/1708.00006) by Biamonte and Bergholm to get familiarized with the basic ideas of tensor networks and MPS. Given the popularity of DMRG, many additional resources are available. In this context, the review [The density-matrix renormalization group in the age of matrix product states](http://arxiv.org/abs/1008.3477) by Schollwöck is often referred to as the “bible” of tensor network methods.
 
@@ -85,7 +118,7 @@ Contributions are always welcome. Please open an issue or submit a pull request.
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-
+This part is for myself during developing the code
 # Notes
 
 ## Exact Diagonalization
