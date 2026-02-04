@@ -1,4 +1,4 @@
-name: ed
+name: nqs
 channels:
   - defaults
   - conda-forge
@@ -7,13 +7,9 @@ dependencies:
   - python=3.11
   - pip # no specific version since we regulary update it
   - ipykernel=7.1 # for jupyter notebook support
-  - matplotlib=3.10
-  - numpy=2.3
-  - scipy=1.16
   - pytest=8.4
   - pytest-cov=7.0
 
 
   - pip:
-      - hydra-core==1.3
-      - pyyaml==6.0
+    - netket==3.21

@@ -3,21 +3,8 @@ using ITensors
 using ITensorMPS
 using LinearAlgebra
 
-function total_fermion_number(sites::Vector{<:Index})::MPO
-    f_sites = sites[1:end-1]
-    L = length(f_sites)
-    os = OpSum()
-    for j in 1:L
-        os += "n", j
-    end
-    return MPO(os, sites)
-end
 
-function total_photon_number(sites::Vector{<:Index})::MPO
-    os = OpSum()
-    os += "N", length(sites) # assume last site is bosonic
-    return MPO(os, sites)
-end
+
 
 
 function main()

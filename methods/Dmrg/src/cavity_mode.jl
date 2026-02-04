@@ -1,9 +1,17 @@
+using Revise
 using Dmrg
 
 using ITensors
 using ITensorMPS
 
 using LinearAlgebra
+
+# Global parameter container
+const CAVITY_PARAMS = Ref((g = 0.0,))
+
+# Setter for cavity parameters
+set_cavity_params!(; g) = (CAVITY_PARAMS[] = (g = g,))
+
 
 alias(::SiteType"CavityMode") = SiteType"Boson"()
 
@@ -12,7 +20,7 @@ alias(::SiteType"CavityMode") = SiteType"Boson"()
           dim = 2,
           conserve_qns = false,
           conserve_number = false,
-          qnname_number = "N_f")
+          qnname_number = "dummy")
 
 Create the Hilbert space for a site of type "CavityMode".
 
@@ -23,7 +31,7 @@ function ITensors.space(
         dim = 2,
         conserve_qns = false,
         conserve_number = conserve_qns,
-        qnname_number = "N_f",
+        qnname_number = "dummy"
     )
     if conserve_number
         return [QN(qnname_number, 0) => dim]
@@ -52,46 +60,178 @@ end
 
 
 
+function ITensors.op(::OpName"Adag+A", ::SiteType"CavityMode", d::Int)
+    p = CAVITY_PARAMS[]
+    g = p.g
+    mat = zeros(d, d)
+    for k in 1:(d - 1)
+        mat[k + 1, k] = sqrt(k)
+        mat[k, k+1] = sqrt(k)
+    end
+    mat .*= g
+    return mat
+end
+
+function build_peierls_phase(g::Real, dim_ph::Int)::Matrix{ComplexF64}
+    # zeros on diagonal
+    d = zeros(Float64, dim_ph)
+
+    # off-diagonal entries: sqrt(1), …, sqrt(dim_ph-1)
+    e = sqrt.(collect(1:dim_ph-1)) # i.e. from 1 to N_ph-1
+
+    # diagonalize a + a^\dagger =: A which is tridiagonal in the number basis
+    A = SymTridiagonal(d, e)
+    eigenvals, eigenvecs = eigen(A)
+
+    # write A = V D V^\dagger with D diagonal matrix of eigenvals and V matrix of eigenvecs
+    phases = exp.(1im * g .* eigenvals) # .* element-wise multiplication
+    # U = V * diag(phases) * V†
+    U = eigenvecs * Diagonal(phases) * eigenvecs'
+
+    return ComplexF64.(U) # ensure complex type
+end
+
+function ITensors.op(::OpName"PeierlsPhase", ::SiteType"CavityMode", d::Int)
+    p = CAVITY_PARAMS[]
+    g = p.g
+    mat = build_peierls_phase(g, d)
+    return mat
+end
+
+function ITensors.op(::OpName"PeierlsPhaseDag", ::SiteType"CavityMode", d::Int)
+    p = CAVITY_PARAMS[]
+    g = p.g
+    mat = build_peierls_phase(g, d)
+    return mat'
+end
+
+
+"""
+    get_energy_variance(H::MPO, psi::MPS) -> Real
+
+Compute the energy variance ⟨H²⟩ - ⟨H⟩² for a given Hamiltonian MPO `H` and state MPS `psi`.
+
+# Arguments
+- `H::MPO`: The Hamiltonian represented as a Matrix Product Operator.
+- `psi::MPS`: A state represented as a Matrix Product State.
+
+# Returns
+- `Real`: The energy variance of the state with respect to the Hamiltonian.
+"""
+function get_energy_variance(H::MPO, psi::MPS)::Real
+    H2 = inner(H,psi,H,psi)
+    E = inner(psi',H,psi)
+
+    # throw error if the imaginary part is significant
+    if abs(imag(H2 - E^2)) > 1e-14
+        error("Energy variance has significant imaginary part: $(imag(H2 - E^2))")
+    end
+    return real(H2-E^2)
+end
+
+function total_photon_number(sites::Vector{<:Index})::MPO
+    os = OpSum()
+    os += "N", length(sites) # assume last site is bosonic
+    return MPO(os, sites)
+end
+
+function total_fermion_number(sites::Vector{<:Index})::MPO
+    f_sites = sites[1:end-1] # assume last site is bosonic
+    L = length(f_sites)
+    os = OpSum()
+    for j in 1:L
+        os += "n", j
+    end
+    return MPO(os, sites)
+end
+
+
+using Random
 function main_one()
+    # parse
+    # g = parse(Float64, ARGS[1])
+
+    g = 3.5
+
+    set_cavity_params!(g=g)
+
+
+    Random.seed!(1234)
     L = 4
+    N = div(L, 2)
     n_max = 5
-    conserve_qns = false
-    b_site = siteind("CavityMode", 1; dim=n_max+1, conserve_qns=conserve_qns)
+    conserve_qns = true
+    b_site = siteinds("CavityMode", 1; dim=n_max+1, conserve_qns=conserve_qns)
     f_sites = siteinds("Fermion", L; conserve_qns=conserve_qns)
-    sites = vcat(f_sites, [b_site])
+    sites = vcat(f_sites, b_site)
 
 
-    H = xxz_cavity_manual(sites)
+    # H = xxz_cavity_manual(sites)
+    t = 1.0
+    U = 0.0
+    g = 1.0
+    omega = 1.0
+    H = xxz_cavity_dev(sites, t, U, g, omega)
 
-    # B = op("B", b_site[1]; g=0.5)
-    # @show B
+    ##############################
+    psi0 = MPS(sites)
+    # f_states = [isodd(n) ? "1" : "0" for n=1:L]
+    f_states = [n<=1 ? "0" : "1" for n=1:L]
+    # f_psi0 = random_mps(f_sites, f_states)
+    f_psi0 = MPS(f_sites, f_states)
 
-    # id = op("Id", b_site[1])
-    # a = op("a", b_site[1])
-    # adag = op("adag", b_site[1])
-    # n = op("n", b_site[1])
-    # @show id, a, adag, n
+    for i in 1:L
+        psi0[i] = f_psi0[i]
+    end
 
-    f_states = [isodd(n) ? "1" : "0" for n=1:L]
-    b_state = ["0"]
-    psi0 = MPS(sites, vcat(f_states, b_state))
+    # site L+1: random local state
+    psi0[L+1] = randomITensor(sites[L+1])
 
-    # os = OpSum()
-    # for j in 1:L
-    #     os += 1.0, "n", j
-    # end
-
-    # H = MPO(os, sites)
-
-    # P = build_peierls_phase(0.5, dim(b_site[1]))
-    # H[L+1] = ITensor(P, prime(b_site[1]), dag(b_site[1]))
+    # normalize the full MPS
+    normalize!(psi0)
+    ##############################
 
 
 
-    @show apply(H, psi0)
-    @show inner(psi0', H, psi0)
+    # run DMRG
+    nsweeps = 10
+    maxdim = [100, 200, 400, 800, 1600]
+    cutoff = [1E-10]
+    noise = [1E-6, 1E-7, 1E-8, 0.0] # help escape local minima
+
+    energy, psi = dmrg(H, psi0; nsweeps=nsweeps, maxdim=maxdim, cutoff=cutoff, noise=noise)
+
+    # compute initial energy
+    energy_is = inner(psi0', H, psi0)
+
+    @show energy_is
+    @show energy
+
+
+
+    # apply photon number operator
+    n_ph_op = total_photon_number(sites)
+    n_ph_is = inner(psi0', n_ph_op, psi0)
+    n_ph_gs = inner(psi', n_ph_op, psi)
+    @show n_ph_is
+    @show n_ph_gs
+
+    # apply fermion number operator
+    n_f_op = total_fermion_number(sites)
+    n_f_is = inner(psi0', n_f_op, psi0)
+    n_f_gs = inner(psi', n_f_op, psi)
+    @show n_f_is
+    @show n_f_gs
+
+
+    # compute energy variance -> zero if psi is eigenstate
+    var_gs = get_energy_variance(H, psi)
+    var_is = get_energy_variance(H, psi0)
+    @show var_is
+    @show var_gs
 
 end
+
 main_one()
 nothing
 
@@ -132,7 +272,7 @@ nothing
 # end
 #ITensors.op(::OpName"n", st::SiteType"CavityMode", d::Int) = op(OpName"N"(), st, d)
 
-# own
+# ------------ own ---------------
 # function ITensors.op(::OpName"Adag+A", ::SiteType"CavityMode", d::Int)
 #     mat = zeros(d, d)
 #     for k in 1:(d - 1)

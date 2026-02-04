@@ -41,7 +41,7 @@ For the Python-based implementations, a Conda environment must be created and ac
 cd /methods/ed
 conda env create --file environment.yml
 conda activate ed
-pip install -e
+pip install -e .
 ```
 For the Julia-based implementations, it is sufficient to start Julia with the project environment activated:
 ```bash
@@ -81,7 +81,7 @@ I carried out analytical calculations for specific limiting cases to validate bo
 
 ### Density matrix renormalization group (DMRG)
 
-The density matrix renormalization group (DMRG) algorithm is a variational method based on matrix product states (MPS). Within the tensor network formalism, one can show that DMRG provides an efficient approach for computing ground states of one-dimensional gapped Hamiltonians. To familiarize myself with the basic ideas of tensor networks and MPS, I relied primarily on the papers [A Practical Introduction to Tensor Networks: Matrix Product States and Projected Entangled Pair States](http://arxiv.org/abs/1306.2164) by Orús and 
+The density matrix renormalization group (DMRG) algorithm is a variational method based on matrix product states (MPS). Within the tensor network formalism, one can show that DMRG provides an efficient approach for computing ground states of one-dimensional gapped Hamiltonians (see for example [Matrix product states represent ground states faithfully](https://link.aps.org/doi/10.1103/PhysRevB.73.094423) by Verstraete and Cirac and [An area law for one-dimensional quantum systems](https://iopscience.iop.org/article/10.1088/1742-5468/2007/08/P08024) by Hastings). To familiarize myself with the basic ideas of tensor networks and MPS, I relied primarily on the papers [A Practical Introduction to Tensor Networks: Matrix Product States and Projected Entangled Pair States](http://arxiv.org/abs/1306.2164) by Orús and 
 [Tensor Networks in a Nutshell](http://arxiv.org/abs/1708.00006) by Biamonte and Bergholm to get familiarized with the basic ideas of tensor networks and MPS. Given the popularity of DMRG, many additional resources are available. In this context, the review [The density-matrix renormalization group in the age of matrix product states](http://arxiv.org/abs/1008.3477) by Schollwöck is often referred to as the “bible” of tensor network methods.
 
 A very quick and dirty summary of DMRG could go as follows. An MPS representation of a quantum many-body state can be written as
@@ -103,8 +103,6 @@ I implemented DMRG using the Julia version of [The ITensor Software Library for 
 TODO: Explain how to deal with photonic mode
 
 
-Outline of the DMRG approach and its numerical structure.
-
 ### Neural quantum states (NQS)
 
 ---
@@ -120,24 +118,60 @@ Contributions are always welcome. Please open an issue or submit a pull request.
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-This part is for myself during developing the code
+
 # Notes
 
-## Exact Diagonalization
+This part is for myself during developing the code
+
+
 
 ### To Do
+
+
 - open vs periodic boundary conditions
 
+## Exact Diagonalization
 
 - run_simulation also for no photons and no coupling case
     - use FFT to transform ground states into momentum space (only for periodic boundary conditions) and compare to dispersion relation
     - show ground state for the extreme cases of strong interaction and no interaction 
     - locate phase transitions?
-    
-- use iTensors to implement DMRG
-- implement periodic boundary conditions in DMRG code (see for example https://github.com/ITensor/ITensorMPOConstruction.jl) 
 
-- write numpy style docstrings for functions -> autodoc with sphinx
+## DMRG
+
+- implement periodic boundary conditions in DMRG code (see for example https://github.com/ITensor/ITensorMPOConstruction.jl)
+- fix code:
+    - think about manual construction of MPO for hopping term with Peierls phase 
+        - can periodic boundary conditions be implemented? If so, how?
+        - is conservation of particle number possible? If so, how?
+
+- check if variance vanishes for initial state (bad) and final state (good)
+- check if energy is lower than for initial state
+## NQS
+
+- netket with gpu support -> follow https://docs.nvidia.com/cuda/cuda-installation-guide-linux/ to install cuda BUT at this moment fedora 43 is not supported
+- after cuda installation, see netket installation instructions
+
+- go through tutorials
+- try to implement different versions of our hamiltonian (with and without photons, with and without coupling) and do ed with netket to compare to our ed code
+- What is a good practise to compare different architectures? 
+
+- architectures to try (with and without translation symmetry):
+    - Mean field; Slater determinant
+    - Slater-Jastrow
+    - Backflow
+    - RBM (is apparently ~CNN for one d)
+    - Feedforward NN
+    - Transformer (?)
+
+
+## General
+- add how to use specific code in readmes that are maybe method specific
+-> pytest --cov=src --cov-report=xml for testing in python (and coverage) and include("scripts/coverage.jl") for julia
+- host julia documentation on github
+- write numpy or google style docstrings for functions -> autodoc with sphinx
+- mypy for python code
+- pylint/flake8 for python code
 
 ### Open Questions
 - why is the 1/omega**2 line not matching with entanglement entropy? -> is there a factor missing -> yes probably because paper just show proportionality and only the functional dependence is relevant
