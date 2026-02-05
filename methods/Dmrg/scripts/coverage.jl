@@ -55,3 +55,4 @@ function run_coverage()
 end
 
 run_coverage()
+nothing

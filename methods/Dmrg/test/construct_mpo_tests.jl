@@ -1,11 +1,12 @@
 using Dmrg
+
 using ITensors
 using ITensorMPS
 using LinearAlgebra
 using Random
 using Test
 
-const ATOL = 1e-12  # absolute tolerance for inner product comparisons
+const ATOL = 1e-12  # absolute tolerance for numerical comparisons
 
 # ------------------------------
 # Helper functions
@@ -68,15 +69,15 @@ end
 Test equivalence of XXZ cavity MPO constructed via OpSum vs manual construction.
 """
 function test_xxz_cavity_equivalence(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
     t::Real,
     U::Real,
     g::Real,
     omega::Real,
     rng::AbstractRNG
 )
-    H = Dmrg.xxz_cavity(sites, t, U, g, omega)
-    Hm = Dmrg.xxz_cavity_manual(sites, t, U, g, omega)
+    H = Dmrg.xxz_cavity(sites; t=t, U=U, g=g, omega=omega)
+    Hm = Dmrg.xxz_cavity_manual(sites; t=t, U=U, g=g, omega=omega)
     test_equivalence(sites, H, Hm; rng=rng, product_state="0")
     return nothing
 end
@@ -88,13 +89,13 @@ end
 Test equivalence of XXZ MPO constructed via OpSum vs manual construction.
 """
 function test_xxz_equivalence(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
     t::Real,
     U::Real,
     rng::AbstractRNG
 )
-    H = Dmrg.xxz(sites, t, U)
-    Hm = Dmrg.xxz_manual(sites, t, U)
+    H = Dmrg.xxz(sites; t=t, U=U)
+    Hm = Dmrg.xxz_manual(sites; t=t, U=U)
     test_equivalence(sites, H, Hm; rng=rng, product_state="0")
     return nothing
 end
@@ -105,13 +106,14 @@ end
 Test equivalence of Heisenberg MPO constructed via OpSum vs manual construction.
 """
 function test_heisenberg_equivalence(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
+    pbc::Bool,
     J::Real,
     Jz::Real,
     rng::AbstractRNG
 )
-    H = Dmrg.heisenberg(sites, J, Jz)
-    Hm = Dmrg.heisenberg_manual(sites, J, Jz)
+    H = Dmrg.heisenberg(sites; pbc=pbc, J=J, Jz=Jz)
+    Hm = Dmrg.heisenberg_manual(sites; pbc=pbc, J=J, Jz=Jz)
     test_equivalence(sites, H, Hm; rng=rng, product_state="Up")
     return nothing
 end
@@ -122,13 +124,13 @@ end
 Test equivalence of Pauli MPO constructed via OpSum vs manual construction.
 """
 function test_pauli_equivalence(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
     a::Real,
     pauli::Symbol,
     rng::AbstractRNG
 )
-    H = Dmrg.pauli_sum(sites, a, pauli)
-    Hm = Dmrg.pauli_sum_manual(sites, a, pauli)
+    H = Dmrg.pauli_sum(sites; a=a, pauli=pauli)
+    Hm = Dmrg.pauli_sum_manual(sites; a=a, pauli=pauli)
     test_equivalence(sites, H, Hm; rng=rng, product_state="Up")
     return nothing
 end
@@ -201,7 +203,7 @@ end
                 f_sites = siteinds("Fermion", L)
                 ph_site = siteind("Photon", 1; dim=dim_ph)
                 sites = vcat(f_sites, [ph_site])
-                test_xxz_cavity_equivalence(sites, t, U, g, omega, rng)
+                test_xxz_cavity_equivalence(sites; t=t, U=U, g=g, omega=omega, rng=rng)
             end
         end
     end
@@ -226,7 +228,7 @@ end
         ph_site = siteind("Photon", 1; dim=2) # otherwise error in MPO construction
         sites = vcat(f_sites, ph_site)
         ψ = random_mps(rng, sites; linkdims = 5)
-        H = Dmrg.xxz_cavity(sites, 0.0, 0.0, 0.0, 0.0)
+        H = Dmrg.xxz_cavity(sites; t=0.0, U=0.0, g=0.0, omega=0.0)
         @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)
     end
 end
@@ -247,7 +249,7 @@ end
         for L in Ls, t in ts, U in Us
             @testset "L=$L, t=$t, U=$U" begin
                 sites = siteinds("Fermion", L)
-                test_xxz_equivalence(sites, t, U, rng)
+                test_xxz_equivalence(sites; t=t, U=U, rng=rng)
             end
         end
     end
@@ -264,7 +266,7 @@ end
     @testset "zero-coupling sanity check" begin
         sites = siteinds("Fermion", 4)
         ψ = random_mps(rng, sites; linkdims = 5)
-        H = Dmrg.xxz(sites, 0.0, 0.0)
+        H = Dmrg.xxz(sites; t=0.0, U=0.0)
         @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)
     end
 end
@@ -279,12 +281,13 @@ end
     Ls = (2, 6)
     Js = (2.5)
     Jzs = (1.0, -1.0)
+    pbcs = (false, true)
 
     @testset "valid constructions" begin
-        for L in Ls, J in Js, Jz in Jzs
+        for L in Ls, J in Js, Jz in Jzs, pbc in pbcs
             @testset "L=$L, J=$J, Jz=$Jz" begin
                 sites = siteinds("S=1/2", L)
-                test_heisenberg_equivalence(sites, J, Jz, rng)
+                test_heisenberg_equivalence(sites; pbc=pbc, J=J, Jz=Jz, rng=rng)
             end
         end
     end
@@ -301,7 +304,7 @@ end
     @testset "zero-coupling sanity check" begin
         sites = siteinds("S=1/2", 4)
         ψ = random_mps(rng, sites; linkdims = 5)
-        H = Dmrg.heisenberg(sites, 0.0, 0.0)
+        H = Dmrg.heisenberg(sites; pbc=false, J=0.0, Jz=0.0)
         @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)
     end
 end
@@ -321,7 +324,7 @@ end
         for L in Ls, a in as, pauli in paulis
             @testset "L=$L, a=$a, pauli=$pauli" begin
                 sites = siteinds("S=1/2", L)
-                test_pauli_equivalence(sites, a, pauli, rng)
+                test_pauli_equivalence(sites; a=a, pauli=pauli, rng=rng)
             end
         end
     end
@@ -337,7 +340,9 @@ end
 
     @testset "invalid pauli symbol" begin
         sites = siteinds("S=1/2", 3)
-        @test_throws ArgumentError Dmrg.pauli_sum(sites, 1.0, :A)
-        @test_throws ArgumentError Dmrg.pauli_sum_manual(sites, 1.0, :A)
+        @test_throws ArgumentError Dmrg.pauli_sum(sites; a=1.0, pauli=:A)
+        @test_throws ArgumentError Dmrg.pauli_sum_manual(sites; a=1.0, pauli=:A)
     end
 end
+
+nothing

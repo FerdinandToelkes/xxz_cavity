@@ -38,7 +38,7 @@ end
 
 """
     xxz_cavity(
-        sites::Vector{<:Index},
+        sites::Vector{<:Index};
         t::Real=1.0,
         U::Real=1.0,
         g::Real=1.0,
@@ -66,7 +66,7 @@ using `OpSum`.
     are not valid spinless fermion and photon indices.
 """
 function xxz_cavity(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
     t::Real=1.0,
     U::Real=1.0,
     g::Real=1.0,
@@ -102,7 +102,7 @@ end
 # of fermions is not conserved by DMRG. We keep it now for reference and maybe testing
 # purposes but it should be removed in the future.
 function xxz_cavity_no_qn_conservation(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
     t::Real=1.0,
     U::Real=1.0,
     g::Real=1.0,
@@ -137,7 +137,7 @@ end
 
 """
     xxz_cavity_manual(
-        sites::Vector{<:Index},
+        sites::Vector{<:Index};
         t::Real=1.0,
         U::Real=1.0,
         g::Real=1.0,
@@ -188,7 +188,7 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
   [this paper](https://arxiv.org/pdf/1611.02498), or [this topic on itensor.discourse](https://itensor.discourse.group/t/manual-construction-of-nearest-neighbor-hopping-of-spinless-fermions-on-a-1d-chain/2567/5)
 """
 function xxz_cavity_manual(
-    sites::Vector{<:Index},
+    sites::Vector{<:Index};
     t::Real=1.0,
     U::Real=1.0,
     g::Real=1.0,
@@ -262,7 +262,7 @@ end
 
 
 """
-    xxz(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0) -> MPO
+    xxz(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0) -> MPO
 
 Construct the spinless fermion XXZ Hamiltonian
 ```math
@@ -283,7 +283,7 @@ Hamiltonian and the one acting on spins as the XXZ Hamiltonian.
 - `ArgumentError`: If fewer than two sites are provided or if `sites` are not spinless
     fermion indices.
 """
-function xxz(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0)::MPO
+function xxz(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
     _check_site_tags(sites, "Fermion")
 
     L = length(sites)
@@ -300,7 +300,7 @@ function xxz(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0)::MPO
 end
 
 """
-    xxz_manual(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0) -> MPO
+    xxz_manual(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0) -> MPO
 
 Construct the spinless fermion XXZ Hamiltonian by explicit MPO construction
 with bond dimension 5:
@@ -344,7 +344,7 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
 - For more details, see e.g. [this ITensor tutorial](https://itensor.org/docs.cgi?page=tutorials/fermions),
   [this paper](https://arxiv.org/pdf/1611.02498), or [this topic on itensor.discourse](https://itensor.discourse.group/t/manual-construction-of-nearest-neighbor-hopping-of-spinless-fermions-on-a-1d-chain/2567/5)
 """
-function xxz_manual(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0)::MPO
+function xxz_manual(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
     _check_site_tags(sites, "Fermion")
 
     L = length(sites)
@@ -402,7 +402,7 @@ end
 #########################################################################
 
 """
-    heisenberg(sites::Vector{<:Index}, pbc::Bool=false, J::Real=1.0, Jz::Real=1.0) -> MPO
+    heisenberg(sites::Vector{<:Index}; pbc::Bool=false, J::Real=1.0, Jz::Real=1.0) -> MPO
 
 Construct the spin-1/2 Heisenberg (XXZ) Hamiltonian
 ```math
@@ -425,7 +425,7 @@ and the one acting on spinless fermions as the XXZ Hamiltonian.
     are not spin-1/2 indices.
 """
 function heisenberg(sites::Vector{<:Index}; pbc::Bool=false, J::Real=1.0, Jz::Real=1.0)::MPO
-    #_check_site_tags(sites, "S=1/2")
+    _check_site_tags(sites, "S=1/2")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -480,14 +480,9 @@ function heisenberg_manual(sites::Vector{<:Index}; pbc::Bool=false, J::Real=1.0,
     end
 end
 
-function fill_op!(T::ITensor, inds, M::AbstractMatrix, prefactor::Real=1.0, local_dim::Int=2)
-    for i in 1:local_dim, j in 1:local_dim
-        T[inds..., i, j] = prefactor * M[i, j]
-    end
-end
 
 function heisenberg_manual_obc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0)::MPO
-    #_check_site_tags(sites, "S=1/2")
+    _check_site_tags(sites, "S=1/2")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -508,98 +503,35 @@ function heisenberg_manual_obc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
     fill_op!(W[1], (3,), S_plus, J/2)
     fill_op!(W[1], (4,), S_z, Jz)
     fill_op!(W[1], (5,), id)
-    # for i in 1:2, j in 1:2
-    #     W[1][2, i, j] = (J/2) * S_minus[i, j]
-    #     W[1][3, i, j] = (J/2) * S_plus[i, j]
-    #     W[1][4, i, j] = Jz * S_z[i, j]
-    #     W[1][5, i, j] = id[i, j]
-    # end
 
     # Bulk sites
     for n in 2:(L-1)
         W[n] = ITensor(links[n-1], links[n], prime(sites[n]), sites[n])
-        for i in 1:2, j in 1:2
-            W[n][1, 1, i, j] = id[i, j]
-            W[n][2, 1, i, j] = S_plus[i, j]
-            W[n][3, 1, i, j] = S_minus[i, j]
-            W[n][4, 1, i, j] = S_z[i, j]
+        fill_op!(W[n], (1, 1), id)
+        fill_op!(W[n], (2, 1), S_plus)
+        fill_op!(W[n], (3, 1), S_minus)
+        fill_op!(W[n], (4, 1), S_z)
 
-            W[n][5, 2, i, j] = (J/2) * S_minus[i, j]
-            W[n][5, 3, i, j] = (J/2) * S_plus[i, j]
-            W[n][5, 4, i, j] = Jz * S_z[i, j]
-            W[n][5, 5, i, j] = id[i, j]
-        end
+        fill_op!(W[n], (5, 2), S_minus, J/2)
+        fill_op!(W[n], (5, 3), S_plus, J/2)
+        fill_op!(W[n], (5, 4), S_z, Jz)
+        fill_op!(W[n], (5, 5), id)
     end
 
     # Last site
     W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
-    for i in 1:2, j in 1:2
-        W[L][1, i, j] = id[i, j]
-        W[L][2, i, j] = S_plus[i, j]
-        W[L][3, i, j] = S_minus[i, j]
-        W[L][4, i, j] = S_z[i, j]
-    end
+    fill_op!(W[L], (1,), id)
+    fill_op!(W[L], (2,), S_plus)
+    fill_op!(W[L], (3,), S_minus)
+    fill_op!(W[L], (4,), S_z)
 
     return MPO(W)
 end
 
-# function heisenberg_manual_obc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0)::MPO
-#     _check_site_tags(sites, "S=1/2")
-
-#     L = length(sites)
-#     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
-
-#     # Local operators (ensure Float64 type for division)
-#     id = [1.0 0.0; 0.0 1.0]
-#     S_z = 0.5 .* [1.0 0.0; 0.0 -1.0]
-#     S_plus = [0.0 1.0; 0.0 0.0]
-#     S_minus = [0.0 0.0; 1.0 0.0]
-
-#     # Virtual bond indices (dimension 5), excluding boundaries
-#     links = [Index(5, "link,l=$i") for i in 1:(L - 1)]
-#     W = Vector{ITensor}(undef, L) # undef: do not initialize yet
-
-#     # First site
-#     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-#     for i in 1:2, j in 1:2
-#         W[1][2, i, j] = (J/2) * S_minus[i, j]
-#         W[1][3, i, j] = (J/2) * S_plus[i, j]
-#         W[1][4, i, j] = Jz * S_z[i, j]
-#         W[1][5, i, j] = id[i, j]
-#     end
-
-#     # Bulk sites
-#     for n in 2:(L-1)
-#         W[n] = ITensor(links[n-1], links[n], prime(sites[n]), sites[n])
-#         for i in 1:2, j in 1:2
-#             W[n][1, 1, i, j] = id[i, j]
-#             W[n][2, 1, i, j] = S_plus[i, j]
-#             W[n][3, 1, i, j] = S_minus[i, j]
-#             W[n][4, 1, i, j] = S_z[i, j]
-
-#             W[n][5, 2, i, j] = (J/2) * S_minus[i, j]
-#             W[n][5, 3, i, j] = (J/2) * S_plus[i, j]
-#             W[n][5, 4, i, j] = Jz * S_z[i, j]
-#             W[n][5, 5, i, j] = id[i, j]
-#         end
-#     end
-
-#     # Last site
-#     W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
-#     for i in 1:2, j in 1:2
-#         W[L][1, i, j] = id[i, j]
-#         W[L][2, i, j] = S_plus[i, j]
-#         W[L][3, i, j] = S_minus[i, j]
-#         W[L][4, i, j] = S_z[i, j]
-#     end
-
-#     return MPO(W)
-# end
-
 
 
 function heisenberg_manual_pbc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0)::MPO
-    #_check_site_tags(sites, "S=1/2")
+    _check_site_tags(sites, "S=1/2")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -616,146 +548,66 @@ function heisenberg_manual_pbc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
 
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-    for i in 1:2, j in 1:2
-        W[1][1, i, j] = id[i, j]
-        W[1][2, i, j] = S_plus[i, j]
-        W[1][3, i, j] = S_minus[i, j]
-        W[1][4, i, j] = S_z[i, j]
-        W[1][5, i, j] = S_plus[i, j]
-        W[1][6, i, j] = S_minus[i, j]
-        W[1][7, i, j] = S_z[i, j]
-    end
+    fill_op!(W[1], (1,), id)
+    fill_op!(W[1], (2,), S_plus)
+    fill_op!(W[1], (3,), S_minus)
+    fill_op!(W[1], (4,), S_z)
+    fill_op!(W[1], (5,), S_plus)
+    fill_op!(W[1], (6,), S_minus)
+    fill_op!(W[1], (7,), S_z)
 
     # Bulk sites
     for n in 2:(L-1)
         W[n] = ITensor(links[n-1], links[n], prime(sites[n]), sites[n])
-        for i in 1:2, j in 1:2
-            W[n][1, 1, i, j] = id[i, j]
-            W[n][1, 2, i, j] = S_plus[i, j]
-            W[n][1, 3, i, j] = S_minus[i, j]
-            W[n][1, 4, i, j] = S_z[i, j]
+        fill_op!(W[n], (1, 1), id)
+        fill_op!(W[n], (1, 2), S_plus)
+        fill_op!(W[n], (1, 3), S_minus)
+        fill_op!(W[n], (1, 4), S_z)
 
-            W[n][2, 8, i, j] = (J/2) * S_minus[i, j]
-            W[n][3, 8, i, j] = (J/2) * S_plus[i, j]
-            W[n][4, 8, i, j] = Jz * S_z[i, j]
+        fill_op!(W[n], (2, 8), S_minus, J/2)
+        fill_op!(W[n], (3, 8), S_plus, J/2)
+        fill_op!(W[n], (4, 8), S_z, Jz)
 
-
-            W[n][5, 5, i, j] = id[i, j]
-            W[n][6, 6, i, j] = id[i, j]
-            W[n][7, 7, i, j] = id[i, j]
-            W[n][8, 8, i, j] = id[i, j]
-        end
+        fill_op!(W[n], (5, 5), id)
+        fill_op!(W[n], (6, 6), id)
+        fill_op!(W[n], (7, 7), id)
+        fill_op!(W[n], (8, 8), id)
     end
 
     # Last site
     W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
-    for i in 1:2, j in 1:2
-        W[L][2, i, j] = (J/2) * S_minus[i, j]
-        W[L][3, i, j] = (J/2) * S_plus[i, j]
-        W[L][4, i, j] = Jz * S_z[i, j]
-        W[L][5, i, j] = (J/2) * S_minus[i, j]
-        W[L][6, i, j] = (J/2) * S_plus[i, j]
-        W[L][7, i, j] = Jz * S_z[i, j]
-        W[L][8, i, j] = id[i, j]
-    end
+    fill_op!(W[L], (2,), S_minus, J/2)
+    fill_op!(W[L], (3,), S_plus, J/2)
+    fill_op!(W[L], (4,), S_z, Jz)
+    fill_op!(W[L], (5,), S_minus, J/2)
+    fill_op!(W[L], (6,), S_plus, J/2)
+    fill_op!(W[L], (7,), S_z, Jz)
+    fill_op!(W[L], (8,), id)
 
     return MPO(W)
 end
 
-let
-    using Random
-    L = 3
-    Jz = 4.0
-    pbc = false
-    sites = siteinds("S=1/2", L)
-    mpo_pbc = heisenberg(sites; Jz=Jz, pbc=pbc)
-    mpo_pbc_man = heisenberg_manual(sites; Jz=Jz, pbc=pbc)
-    # mpo_man = heisenberg_manual(sites)
+# let
+#     using Random
+#     L = 3
+#     Jz = 4.0
+#     pbc = true
+#     sites = siteinds("S=1/2", L)
+#     mpo_pbc = heisenberg(sites; Jz=Jz, pbc=pbc)
+#     mpo_pbc_man = heisenberg_manual(sites; Jz=Jz, pbc=pbc)
 
-    # for i in 1:L
-    #     @show mpo_pbc[i]
-    #     @show mpo_pbc_man[i]
-    # end
-
-    # set seed for reproducibility
-    Random.seed!(42)
-    state = ["1", "0", "1"]
-    psi = random_mps(sites, state)
-    @show inner(psi', mpo_pbc, psi)
-    @show inner(psi', mpo_pbc_man, psi)
-    # @show inner(state', mpo_man, state)
-end
-
-# function SzSz_pbc(sites::Vector{<:Index}, Jz::Real=1.0)::MPO
-#     # _check_site_tags(sites, "S=1/2")
-
-#     L = length(sites)
-#     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
-
-#     os = OpSum()
-#     for j in 1:(L-1)
-#         os += Jz, "Sz", j, "Sz", j + 1
-#     end
-
-#     # add terms at boundaries
-#     os += Jz, "Sz", L, "Sz", 1
-
-#     return MPO(os, sites)
+#     # set seed for reproducibility
+#     Random.seed!(42)
+#     state = ["1", "0", "1"]
+#     psi = random_mps(sites, state)
+#     @show inner(psi', mpo_pbc, psi)
+#     @show inner(psi', mpo_pbc_man, psi)
+#     # @show inner(state', mpo_man, state)
 # end
-
-
-# function SzSz_manual_pbc(sites::Vector{<:Index}, Jz::Real=1.0)::MPO
-#     # _check_site_tags(sites, "S=1/2")
-
-#     L = length(sites)
-#     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
-
-#     # Local operators (ensure Float64 type for division)
-#     id = [1.0 0.0; 0.0 1.0]
-#     S_z = 0.5 .* [1.0 0.0; 0.0 -1.0]
-
-#     # Virtual bond indices (dimension 4), excluding boundaries
-#     links = [Index(4, "link,l=$i") for i in 1:(L - 1)]
-#     W = Vector{ITensor}(undef, L) # undef: do not initialize yet
-
-#     # First site
-#     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-#     for i in 1:2, j in 1:2
-#         W[1][1, i, j] = id[i, j]
-#         W[1][2, i, j] = Jz * S_z[i, j]
-#         W[1][3, i, j] = S_z[i, j]
-#     end
-
-#     # Bulk sites
-#     for n in 2:(L-1)
-#         W[n] = ITensor(links[n-1], links[n], prime(sites[n]), sites[n])
-#         for i in 1:2, j in 1:2
-#             W[n][1, 1, i, j] = id[i, j]
-#             W[n][1, 2, i, j] = Jz * S_z[i, j]
-
-#             W[n][2, 4, i, j] = S_z[i, j]
-
-#             W[n][3, 3, i, j] = id[i, j]
-#             W[n][4, 4, i, j] = id[i, j]
-#         end
-#     end
-
-#     # Last site
-#     W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
-#     for i in 1:2, j in 1:2
-#         W[L][2, i, j] = S_z[i, j]
-#         W[L][3, i, j] = Jz * S_z[i, j]
-#         W[L][4, i, j] = id[i, j]
-#     end
-
-#     return MPO(W)
-# end
-
-
 
 
 """
-    pauli_sum(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X) -> MPO
+    pauli_sum(sites::Vector{<:Index}; a::Real=1.0, pauli::Symbol=:X) -> MPO
 
 Construct an MPO representing
 ```math
@@ -774,7 +626,7 @@ where σ_j is the Pauli matrix specified by `pauli` acting on sites with spin 1/
 # Throws
 - `ArgumentError`: If `pauli ∉ (:X, :Y, :Z)` or if `sites` are not spin-1/2 indices.
 """
-function pauli_sum(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X)::MPO
+function pauli_sum(sites::Vector{<:Index}; a::Real=1.0, pauli::Symbol=:X)::MPO
     _check_site_tags(sites, "S=1/2")
     _check_pauli_symbol(pauli)
 
@@ -791,7 +643,7 @@ end
 
 
 """
-    pauli_sum_manual(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X) -> MPO
+    pauli_sum_manual(sites::Vector{<:Index}; a::Real=1.0, pauli::Symbol=:X) -> MPO
 
 Construct an MPO representing
 ```math
@@ -812,7 +664,7 @@ be found in my notes on GitHub.
 # Throws
 - `ArgumentError`: If `pauli ∉ (:X, :Y, :Z)` or if `sites` are not spin-1/2 indices.
 """
-function pauli_sum_manual(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X,
+function pauli_sum_manual(sites::Vector{<:Index}; a::Real=1.0, pauli::Symbol=:X,
 )::MPO
     _check_site_tags(sites, "S=1/2")
     _check_pauli_symbol(pauli)
@@ -831,27 +683,21 @@ function pauli_sum_manual(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X,
 
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-    for i in 1:2, j in 1:2
-        W[1][1, i, j] = a * σ[i, j]
-        W[1][2, i, j] = id[i, j]
-    end
+    fill_op!(W[1], (1,), σ, a)
+    fill_op!(W[1], (2,), id)
 
     # Bulk sites
     for n in 2:(L - 1)
         W[n] = ITensor(links[n - 1], links[n], prime(sites[n]), sites[n])
-        for i in 1:2, j in 1:2
-            W[n][1, 1, i, j] = id[i, j]
-            W[n][2, 1, i, j] = a * σ[i, j]
-            W[n][2, 2, i, j] = id[i, j]
-        end
+        fill_op!(W[n], (1, 1), id)
+        fill_op!(W[n], (2, 1), σ, a)
+        fill_op!(W[n], (2, 2), id)
     end
 
     # Last site
     W[L] = ITensor(links[L - 1], prime(sites[L]), sites[L])
-    for i in 1:2, j in 1:2
-        W[L][1, i, j] = id[i, j]
-        W[L][2, i, j] = a * σ[i, j]
-    end
+    fill_op!(W[L], (1,), id)
+    fill_op!(W[L], (2,), σ, a)
 
     return MPO(W)
 end
