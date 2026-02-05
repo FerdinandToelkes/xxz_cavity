@@ -2,7 +2,11 @@
 This script generates a coverage report in LCOV format for the Dmrg module
 This can be used by the VS Code Coverage Gutters extension to display coverage info
 
-Execute this script by running from the REPL by running:
+Execute this script by running
+
+    julia --sysimage ~/.julia/sysimages/sys_itensors.so --project=. scripts/coverage.jl
+
+from the terminal or from the REPL by running:
 
     julia> include("scripts/coverage.jl")
 

@@ -12,9 +12,11 @@ The goal of this project is to study the extended Hubbard Hamiltonian for a one-
 H = \sum_{j=1}^{L-1} -t \left( e^{i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_j c_{j+1} + e^{-i\frac{g}{\sqrt{L}}(a + a^\dagger)} c^\dagger_{j+1} c_{j} \right) + \sum_{j=1}^{L-1} U n_j n_{j+1} + \Omega N_{\text{ph}} \, .
 ```
 Passetti et al. examined this Hamiltonian in the paper [Cavity Light-Matter Entanglement through Quantum Fluctuations](https://link.aps.org/doi/10.1103/PhysRevLett.131.023601) using, among other methods, the density matrix renormalization group (DMRG) algorithm. The aim of this project is to use this system to benchmark various numerical approaches, namely
-- Exact diagonalization (ED)
-- Density matrix renormalization group (DMRG)
-- Neural quantum states (NQS)
+- Exact diagonalization (ED),
+- Density matrix renormalization group (DMRG),
+- Neural quantum states (NQS).
+
+The Hamiltonian reduces to the XXZ chain for the case of no coupling to the cavity mode and hence the name of the repository. 
 
 ## List of contents
 
@@ -181,7 +183,15 @@ This part is for myself during developing the code
 ## DMRG
 
 - switch to periodic boundary conditions -> how has passetti done it?
+- why does FSM approach not work here?
 - see https://github.com/GiacomoPassetti/dmrg_cav/blob/main/Peier_v1(trivial).py
+
+- road map: 
+    - check pbc and try to understand it with FSM
+    - implement pbc (at least for OpSum method)
+    - test it
+    - develop DMRG code -> look at tutorials and FAQs, maybe ask Juani
+    - compare DMRG results to ED -> maybe define a top level bash script, that can run them both to systematically abstract from the single packages; think about nice "interface" for systematic data creation 
 
 
 ## NQS

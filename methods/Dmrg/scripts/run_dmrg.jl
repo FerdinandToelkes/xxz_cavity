@@ -21,22 +21,14 @@ end
 
 using Random
 function main_one()
-    # parse
-    # g = parse(Float64, ARGS[1])
-
-    g = 3.5
-
-
-
-
     Random.seed!(1234)
     L = 4
     N = div(L, 2)
     n_max = 5
     conserve_qns = false
-    b_site = siteinds("Photon", 1; dim=n_max+1, conserve_qns=conserve_qns)
     f_sites = siteinds("Fermion", L; conserve_qns=conserve_qns)
-    sites = vcat(f_sites, b_site)
+    ph_site = siteinds("Photon", 1; dim=n_max+1, conserve_qns=conserve_qns)
+    sites = vcat(f_sites, ph_site)
 
 
     # H = xxz_cavity_manual(sites)

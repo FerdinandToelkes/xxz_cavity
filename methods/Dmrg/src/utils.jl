@@ -69,6 +69,13 @@ end
     return nothing
 end
 
+function fill_op!(T::ITensor, inds::Vararg{Index}, M::AbstractMatrix, prefactor::Real=1.0, local_dim::Int=2)
+    for i in 1:local_dim, j in 1:local_dim
+        T[inds..., i, j] = prefactor * M[i, j]
+    end
+end
+
+
 
 @inline function _check_pauli_symbol(pauli::Symbol)
     pauli ∈ _PAULI_SYMBOLS ||
