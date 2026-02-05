@@ -199,8 +199,8 @@ end
         for L in Ls, t in ts, U in Us, g in gs, omega in omegas, dim_ph in dim_phs
             @testset "L=$L, t=$t, U=$U, g=$g, omega=$omega" begin
                 f_sites = siteinds("Fermion", L)
-                b_site = siteind("Boson", 1; dim=dim_ph)
-                sites = vcat(f_sites, [b_site])
+                ph_site = siteind("Photon", 1; dim=dim_ph)
+                sites = vcat(f_sites, [ph_site])
                 test_xxz_cavity_equivalence(sites, t, U, g, omega, rng)
             end
         end
@@ -208,8 +208,8 @@ end
 
     @testset "invalid sites" begin
         invalid_sites = (
-            [siteinds("Fermion", 1); siteind("Boson", 1; dim=2)], # too short chain
-            [siteinds("S=1/2", 3); siteind("Boson", 1; dim=2)], # wrong particle type
+            [siteinds("Fermion", 1); siteind("Photon", 1; dim=2)], # too short chain
+            [siteinds("S=1/2", 3); siteind("Photon", 1; dim=2)], # wrong particle type
             [siteinds("Fermion", 3); siteind("Fermion", 1)], # wrong particle
             siteinds("Fermion", 2) # missing bosonic site
         )
@@ -223,8 +223,8 @@ end
 
     @testset "zero-coupling sanity check" begin
         f_sites = siteinds("Fermion", 4)
-        b_site = siteind("Boson", 1; dim=2) # otherwise error in MPO construction
-        sites = vcat(f_sites, b_site)
+        ph_site = siteind("Photon", 1; dim=2) # otherwise error in MPO construction
+        sites = vcat(f_sites, ph_site)
         ψ = random_mps(rng, sites; linkdims = 5)
         H = Dmrg.xxz_cavity(sites, 0.0, 0.0, 0.0, 0.0)
         @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)

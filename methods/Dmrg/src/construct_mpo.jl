@@ -2,69 +2,16 @@ using ITensors
 using ITensorMPS
 using LinearAlgebra
 
-const _PAULI_SYMBOLS = (:X, :Y, :Z)
-
-# TODO: add comment on conventions used to construct MPOs and reference papers
-
-
-
-# the following functions are not used, but were merely used to
-# test how ITensors works
-
-
-# helper functions -> TODO: to utils.jl later?
-
-@inline function _check_spinhalf_sites(sites::AbstractVector{<:Index})
-    for s in sites
-        hastags(s, "S=1/2") ||
-            throw(ArgumentError("All site indices must be for spin-1/2 particles"))
-    end
-    return nothing
-end
-
-@inline function _check_spinless_fermions_sites(sites::AbstractVector{<:Index})
-    for s in sites
-        hastags(s, "Fermion") ||
-            throw(ArgumentError("All site indices must be for spinless fermions"))
-    end
-    return nothing
-end
-
-@inline function _check_boson_sites(sites::AbstractVector{<:Index})
-    for s in sites
-        hastags(s, "Boson") ||
-            throw(ArgumentError("All site indices must be for bosons"))
-    end
-    return nothing
-end
-
-# @inline tells the compiler to inline the function, which can improve
-# performance by avoiding function call overhead.
-# It is typically used for small, frequently called functions.
-@inline function _pauli_matrix(pauli::Symbol)
-    pauli ∈ _PAULI_SYMBOLS ||
-        throw(ArgumentError("pauli must be :X, :Y, or :Z"))
-
-    # '===' checks for both value and type equality
-    if pauli === :X
-        return ComplexF64[0 1; 1 0]
-    elseif pauli === :Y
-        return ComplexF64[0 -im; im 0]
-    else # :Z
-        return ComplexF64[1 0; 0 -1]
-    end
-end
-
 
 """
     build_peierls_phase(g::Real, dim_ph::Int) -> Matrix{ComplexF64}
 
-Construct the Peierls phase matrix ``\\exp(ig(a + a^\\dagger))`` for a bosonic
+Construct the Peierls phase matrix ``\\exp(ig(a + a^\\dagger))`` for a photon
 site with given dimension `dim_ph`
 
 # Arguments
 - `g::Real`: Coupling strength.
-- `dim_ph::Int`: Dimension of the bosonic site.
+- `dim_ph::Int`: Dimension of the photon site.
 
 # Returns
 - `Matrix{ComplexF64}`: The Peierls phase matrix of size `dim_ph x dim_ph`.
@@ -98,7 +45,7 @@ end
         omega::Real=1.0
     ) -> MPO
 
-Construct the spinless fermion XXZ Hamiltonian coupled to a single bosonic mode
+Construct the spinless fermion XXZ Hamiltonian coupled to a single photon mode
 (cavity) using `OpSum`:
 ```math
 H = \\sum_{j=1}^{L-1} -t \\left( e^{i\\frac{g}{\\sqrt{L}}(a + a^\\dagger)} c^\\dagger_j c_{j+1} + e^{-i\\frac{g}{\\sqrt{L}}(a + a^\\dagger)} c^\\dagger_{j+1} c_{j} \\right) + \\sum_{j=1}^{L-1} U n_j n_{j+1} + \\Omega N_{\\text{ph}}
@@ -106,18 +53,17 @@ H = \\sum_{j=1}^{L-1} -t \\left( e^{i\\frac{g}{\\sqrt{L}}(a + a^\\dagger)} c^\\d
 using `OpSum`.
 
 # Arguments
-- `sites::Vector{<:Index}`: Vector of site indices, with the last index being the bosonic site.
+- `sites::Vector{<:Index}`: Vector of site indices, with the last index being the photon site.
 - `t::Real=1.0`: Hopping amplitude.
 - `U::Real=1.0`: Interaction strength.
-- `g::Real=1.0`: Coupling strength between fermions and bosonic mode.
-- `omega::Real=1.0`: Frequency of the bosonic mode.
-
+- `g::Real=1.0`: Coupling strength between fermions and photon mode.
+- `omega::Real=1.0`: Frequency of the photon mode.
 # Returns
 - `MPO`: The constructed MPO representing the XXZ Hamiltonian coupled to a cavity.
 
 # Throws
 - `ArgumentError`: If fewer than two sites are provided or if the site indices
-    are not valid spinless fermion and boson indices.
+    are not valid spinless fermion and photon indices.
 """
 function xxz_cavity(
     sites::Vector{<:Index},
@@ -128,31 +74,34 @@ function xxz_cavity(
 )::MPO
     # unpack sites and check their validity
     f_sites = sites[1:end-1]
-    b_site = sites[end]
-    _check_spinless_fermions_sites(f_sites)
-    _check_boson_sites([b_site]) # wrap in vector for checking
+    _check_site_tags(f_sites, "Fermion")
+    _check_site_tag(sites[end], "Photon")
 
     L = length(f_sites) # number of fermionic sites
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
 
-    P = build_peierls_phase(g, dim(b_site))
+    set_cavity_params!(g=g)
     os = OpSum()
-    b = L + 1 # boson site index
+    ph_ind = length(sites) # photon site index
     for j in 1:(L-1)
         # dressed hopping
-        os += -t, P, b, "c†", j, "c", j+1
-        os += -t, P', b, "c†", j+1, "c", j
+        os += -t, "PeierlsPhase", ph_ind, "c†", j, "c", j+1
+        os += -t, "PeierlsPhaseDag", ph_ind, "c†", j+1, "c", j
         # interaction term
         os += U, "n", j, "n", j+1
     end
 
-    # add boson energy term
-    os += omega, "N", b
+    # add photon energy term
+    os += omega, "N", ph_ind
 
     return MPO(os, sites)
 end
 
-function xxz_cavity_dev(
+
+# this function is outdated since we it does only work for the case where the total number
+# of fermions is not conserved by DMRG. We keep it now for reference and maybe testing
+# purposes but it should be removed in the future.
+function xxz_cavity_no_qn_conservation(
     sites::Vector{<:Index},
     t::Real=1.0,
     U::Real=1.0,
@@ -161,31 +110,30 @@ function xxz_cavity_dev(
 )::MPO
     # unpack sites and check their validity
     f_sites = sites[1:end-1]
-    b_site = sites[end]
-    _check_spinless_fermions_sites(f_sites)
-    #_check_boson_sites([b_site]) # wrap in vector for checking
+    ph_site = sites[end]
+    _check_site_tags(f_sites, "Fermion")
+    _check_site_tags([ph_site], "Photon")
 
     L = length(f_sites) # number of fermionic sites
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
 
-    # P = build_peierls_phase(g, dim(b_site))
+    P = build_peierls_phase(g, dim(ph_site))
     os = OpSum()
-    b = length(sites) # boson site index
+    ph_ind = L + 1 # photon site index
     for j in 1:(L-1)
         # dressed hopping
-        # os += -t, "c†", j, "c", j+1
-        os += -t, "PeierlsPhase", b, "c†", j, "c", j+1
-        # os += -t, "c†", j+1, "c", j
-        os += -t, "PeierlsPhaseDag", b, "c†", j+1, "c", j
+        os += -t, P, ph_ind, "c†", j, "c", j+1
+        os += -t, P', ph_ind, "c†", j+1, "c", j
         # interaction term
         os += U, "n", j, "n", j+1
     end
 
-    # add boson energy term
-    os += omega, "N", b
+    # add photon energy term
+    os += omega, "N", ph_ind
 
     return MPO(os, sites)
 end
+
 
 """
     xxz_cavity_manual(
@@ -205,18 +153,18 @@ The construction is based on the finite state machine (FSM) approach and details
 be found in my notes on GitHub.
 
 # Arguments
-- `sites::Vector{<:Index}`: Vector of site indices, with the last index being the bosonic site.
+- `sites::Vector{<:Index}`: Vector of site indices, with the last index being the photon site.
 - `t::Real=1.0`: Hopping amplitude.
 - `U::Real=1.0`: Interaction strength.
-- `g::Real=1.0`: Coupling strength between fermions and bosonic mode.
-- `omega::Real=1.0`: Frequency of the bosonic mode.
+- `g::Real=1.0`: Coupling strength between fermions and photon mode.
+- `omega::Real=1.0`: Frequency of the photon mode.
 
 # Returns
 - `MPO`: The constructed MPO representing the XXZ Hamiltonian coupled to a cavity.
 
 # Throws
 - `ArgumentError`: If fewer than two sites are provided or if the site indices
-    are not valid spinless fermion and boson indices.
+    are not valid spinless fermion and photon indices.
 
 # Notes
 - One has to use the Jordan-Wigner transformation (JWT) to map the fermionic operators
@@ -248,9 +196,9 @@ function xxz_cavity_manual(
 )::MPO
     # unpack sites and check their validity
     f_sites = sites[1:end-1]
-    b_site = sites[end]
-    _check_spinless_fermions_sites(f_sites)
-    #_check_boson_sites([b_site]) # wrap in vector for checking
+    ph_site = sites[end]
+    _check_site_tags(f_sites, "Fermion")
+    _check_site_tag(ph_site, "Photon")
 
     L_mpo = length(sites) # number of sites in MPO (fermionic + bosonic)
     L = length(f_sites) # number of fermionic sites
@@ -263,7 +211,7 @@ function xxz_cavity_manual(
     a = ComplexF64[0 1; 0 0] # 'bosonic' annihilation operator from JWT
 
     # Local operators on bosonic site
-    dim_ph = dim(b_site)
+    dim_ph = dim(ph_site)
     id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
     n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
     peierls_phase = build_peierls_phase(g, dim_ph)
@@ -336,7 +284,7 @@ Hamiltonian and the one acting on spins as the XXZ Hamiltonian.
     fermion indices.
 """
 function xxz(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0)::MPO
-    _check_spinless_fermions_sites(sites)
+    _check_site_tags(sites, "Fermion")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -397,7 +345,7 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
   [this paper](https://arxiv.org/pdf/1611.02498), or [this topic on itensor.discourse](https://itensor.discourse.group/t/manual-construction-of-nearest-neighbor-hopping-of-spinless-fermions-on-a-1d-chain/2567/5)
 """
 function xxz_manual(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0)::MPO
-    _check_spinless_fermions_sites(sites)
+    _check_site_tags(sites, "Fermion")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -448,7 +396,10 @@ function xxz_manual(sites::Vector{<:Index}, t::Real=1.0, U::Real=1.0)::MPO
     return MPO(W)
 end
 
-
+#########################################################################
+# The following functions are not used, but were merely used to
+# test how ITensors works (especially OpSum vs. manual MPO construction).
+#########################################################################
 
 """
     heisenberg(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0) -> MPO
@@ -473,7 +424,7 @@ and the one acting on spinless fermions as the XXZ Hamiltonian.
     are not spin-1/2 indices.
 """
 function heisenberg(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0)::MPO
-    _check_spinhalf_sites(sites)
+    _check_site_tags(sites, "S=1/2")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -489,7 +440,7 @@ function heisenberg(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0)::MPO
 end
 
 # function heisenberg_pbc(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0)::MPO
-#     _check_spinhalf_sites(sites)
+#     _check_site_tags(sites, "S=1/2")
 
 #     L = length(sites)
 #     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -510,7 +461,7 @@ end
 # end
 
 # function heisenberg_manual_pbc(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0)::MPO
-#     _check_spinhalf_sites(sites)
+#     _check_site_tags(sites, "S=1/2")
 
 #     L = length(sites)
 #     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -574,7 +525,7 @@ end
 # end
 
 # function SzSz_pbc(sites::Vector{<:Index}, Jz::Real=1.0)::MPO
-#     _check_spinhalf_sites(sites)
+#     _check_site_tags(sites, "S=1/2")
 
 #     L = length(sites)
 #     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -591,7 +542,7 @@ end
 # end
 
 # function SzSz_manual_pbc(sites::Vector{<:Index}, Jz::Real=1.0)::MPO
-#     _check_spinhalf_sites(sites)
+#     _check_site_tags(sites, "S=1/2")
 
 #     L = length(sites)
 #     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -686,7 +637,7 @@ machine (FSM) approach and details can be found in my notes on GitHub.
     are not spin-1/2 indices.
 """
 function heisenberg_manual(sites::Vector{<:Index}, J::Real=1.0, Jz::Real=1.0)::MPO
-    _check_spinhalf_sites(sites)
+    _check_site_tags(sites, "S=1/2")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
@@ -760,9 +711,8 @@ where σ_j is the Pauli matrix specified by `pauli` acting on sites with spin 1/
 - `ArgumentError`: If `pauli ∉ (:X, :Y, :Z)` or if `sites` are not spin-1/2 indices.
 """
 function pauli_sum(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X)::MPO
-    _check_spinhalf_sites(sites)
-    pauli ∈ _PAULI_SYMBOLS ||
-        throw(ArgumentError("pauli must be :X, :Y, or :Z"))
+    _check_site_tags(sites, "S=1/2")
+    _check_pauli_symbol(pauli)
 
     L = length(sites)
     L ≥ 1 || throw(ArgumentError("Need at least one site"))
@@ -800,7 +750,8 @@ be found in my notes on GitHub.
 """
 function pauli_sum_manual(sites::Vector{<:Index}, a::Real=1.0, pauli::Symbol=:X,
 )::MPO
-    _check_spinhalf_sites(sites)
+    _check_site_tags(sites, "S=1/2")
+    _check_pauli_symbol(pauli)
 
     σ = _pauli_matrix(pauli)
     id = ComplexF64[1 0; 0 1] # since we have complex numbers in pauli matrices

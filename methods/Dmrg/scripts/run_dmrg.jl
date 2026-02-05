@@ -1,4 +1,5 @@
-# using Dmrg
+using Dmrg
+
 using ITensors
 using ITensorMPS
 using LinearAlgebra
@@ -15,61 +16,96 @@ function main()
     U = 2.0 * t  # On-site interaction
     g = 0.5 * t / sqrt(L) # Light-matter coupling
     omega = 1.0  # Cavity frequency
-    f_sites = siteinds("Fermion", L; conserve_qns=true)
-    # b_site = siteind("Boson"; dim=N_ph+1, conserve_qns=true)
-    # b_site = Index(QN() => (N_ph+1); tags="Boson,Site,n=$(L+1)")
-    # Create a boson site index with exactly one QN block
-    b_site = Index(QN(0) => N_ph+1; tags="Boson")
-    # i = Index(QN(0)=>2,QN(1)=>3;tags="i")
 
-
-    sites = vcat(f_sites, b_site)
-
-    # L fermionic sites (conserved particle name) + 1 bosonic site (no conservation)
-    H = xxz_cavity(sites, t, U, g, omega)
-
-    return
-    f_state = [isodd(n) ? "1" : "0" for n=1:L]
-    b_state = "0"
-    state = vcat(f_state, [b_state])
-    psi0 = MPS(sites,state)
-
-    nsweeps = 10
-    maxdim = [10,20,100,100,200] #1000
-    cutoff = [1E-10]
-
-
-    @time energy, psi = dmrg(H, psi0; nsweeps, maxdim, cutoff)
-
-    # check if psi is actually an eigenstate
-    H2 = inner(H,psi,H,psi)
-    E = inner(psi',H,psi)
-    var = H2-E^2
-    @show var
-
-    # compute number of fermions
-    N_f_op = total_fermion_number(sites)
-    n_f = inner(psi', N_f_op, psi)
-    n_ph = total_photon_number(sites)
-    n_ph_val = inner(psi', n_ph, psi)
-    println("Ground state energy = $(energy)")
-    println("Number of fermions = $(n_f)")
-    println("Number of photons = $(n_ph_val)")
-
-    # # Define model parameters
-    # model = HeisenbergModel(10; J=1.0)
-
-    # # Set DMRG parameters
-    # dmrg_params = DmrgParameters(max_bond_dim=100, num_sweeps=10)
-
-    # # Run DMRG simulation
-    # result = run_dmrg(model, dmrg_params)
-
-    # # Output results
-    # println("Ground state energy: ", result.ground_state_energy)
-    # println("Entanglement entropy: ", result.entanglement_entropy)
 end
 
+using Random
+function main_one()
+    # parse
+    # g = parse(Float64, ARGS[1])
 
-main()
+    g = 3.5
+
+
+
+
+    Random.seed!(1234)
+    L = 4
+    N = div(L, 2)
+    n_max = 5
+    conserve_qns = false
+    b_site = siteinds("Photon", 1; dim=n_max+1, conserve_qns=conserve_qns)
+    f_sites = siteinds("Fermion", L; conserve_qns=conserve_qns)
+    sites = vcat(f_sites, b_site)
+
+
+    # H = xxz_cavity_manual(sites)
+    t = 1.0
+    U = 0.0
+    g = 1.0
+    omega = 1.0
+    H = xxz_cavity_dev(sites, t, U, g, omega)
+    return
+
+    ##############################
+    psi0 = MPS(sites)
+    # f_states = [isodd(n) ? "1" : "0" for n=1:L]
+    f_states = [n<=1 ? "0" : "1" for n=1:L]
+    # f_psi0 = random_mps(f_sites, f_states)
+    f_psi0 = MPS(f_sites, f_states)
+
+    for i in 1:L
+        psi0[i] = f_psi0[i]
+    end
+
+    # site L+1: random local state
+    psi0[L+1] = randomITensor(sites[L+1])
+
+    # normalize the full MPS
+    normalize!(psi0)
+    ##############################
+
+
+
+    # run DMRG
+    nsweeps = 10
+    maxdim = [100, 200, 400, 800, 1600]
+    cutoff = [1E-10]
+    noise = [1E-6, 1E-7, 1E-8, 0.0] # help escape local minima
+
+    energy, psi = dmrg(H, psi0; nsweeps=nsweeps, maxdim=maxdim, cutoff=cutoff, noise=noise)
+
+    # compute initial energy
+    energy_is = inner(psi0', H, psi0)
+
+    @show energy_is
+    @show energy
+
+
+
+    # apply photon number operator
+    n_ph_op = total_photon_number(sites)
+    n_ph_is = inner(psi0', n_ph_op, psi0)
+    n_ph_gs = inner(psi', n_ph_op, psi)
+    @show n_ph_is
+    @show n_ph_gs
+
+    # apply fermion number operator
+    n_f_op = total_fermion_number(sites)
+    n_f_is = inner(psi0', n_f_op, psi0)
+    n_f_gs = inner(psi', n_f_op, psi)
+    @show n_f_is
+    @show n_f_gs
+
+
+    # compute energy variance -> zero if psi is eigenstate
+    var_gs = get_energy_variance(H, psi)
+    var_is = get_energy_variance(H, psi0)
+    @show var_is
+    @show var_gs
+
+end
+
+main_one()
+
 nothing
