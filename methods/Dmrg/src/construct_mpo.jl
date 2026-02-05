@@ -67,6 +67,7 @@ using `OpSum`.
 """
 function xxz_cavity(
     sites::Vector{<:Index};
+    pbc::Bool=false,
     t::Real=1.0,
     U::Real=1.0,
     g::Real=1.0,
@@ -103,6 +104,7 @@ end
 # purposes but it should be removed in the future.
 function xxz_cavity_no_qn_conservation(
     sites::Vector{<:Index};
+    pbc::Bool=false,
     t::Real=1.0,
     U::Real=1.0,
     g::Real=1.0,
@@ -189,6 +191,7 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
 """
 function xxz_cavity_manual(
     sites::Vector{<:Index};
+    pbc::Bool=false,
     t::Real=1.0,
     U::Real=1.0,
     g::Real=1.0,
@@ -262,7 +265,7 @@ end
 
 
 """
-    xxz(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0) -> MPO
+    xxz(sites::Vector{<:Index}; pbc::Bool=false, t::Real=1.0, U::Real=1.0) -> MPO
 
 Construct the spinless fermion XXZ Hamiltonian
 ```math
@@ -273,6 +276,8 @@ Hamiltonian and the one acting on spins as the XXZ Hamiltonian.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spinless fermions.
+- `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
+                     or open boundary conditions (OBC).
 - `t::Real=1.0`: Hopping amplitude.
 - `U::Real=1.0`: Interaction strength.
 
@@ -283,11 +288,12 @@ Hamiltonian and the one acting on spins as the XXZ Hamiltonian.
 - `ArgumentError`: If fewer than two sites are provided or if `sites` are not spinless
     fermion indices.
 """
-function xxz(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
+function xxz(sites::Vector{<:Index}; pbc::Bool=false, t::Real=1.0, U::Real=1.0)::MPO
     _check_site_tags(sites, "Fermion")
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+    pbc && L < 3 && throw(ArgumentError("Periodic boundary conditions not possible for L < 3"))
 
     os = OpSum()
     for j in 1:(L-1)
@@ -296,11 +302,17 @@ function xxz(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
         os += U, "n", j, "n", j + 1
     end
 
+    if pbc
+        os += -t, "c†", L, "c", 1
+        os += -t, "c†", 1, "c", L # or +t, "c", L, "c†", 1 due to anticommutation
+        os += U, "n", L, "n", 1
+    end
+
     return MPO(os, sites)
 end
 
 """
-    xxz_manual(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0) -> MPO
+    xxz_manual(sites::Vector{<:Index}; pbc::Bool=false, t::Real=1.0, U::Real=1.0) -> MPO
 
 Construct the spinless fermion XXZ Hamiltonian by explicit MPO construction
 with bond dimension 5:
@@ -313,6 +325,8 @@ on the finite state machine (FSM) approach and details can be found in my notes 
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spinless fermions.
+- `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
+                     or open boundary conditions (OBC).
 - `t::Real=1.0`: Hopping amplitude.
 - `U::Real=1.0`: Interaction strength.
 
@@ -344,7 +358,16 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
 - For more details, see e.g. [this ITensor tutorial](https://itensor.org/docs.cgi?page=tutorials/fermions),
   [this paper](https://arxiv.org/pdf/1611.02498), or [this topic on itensor.discourse](https://itensor.discourse.group/t/manual-construction-of-nearest-neighbor-hopping-of-spinless-fermions-on-a-1d-chain/2567/5)
 """
-function xxz_manual(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
+function xxz_manual(sites::Vector{<:Index}; pbc::Bool=false, t::Real=1.0, U::Real=1.0)::MPO
+    if pbc
+        return xxz_manual_pbc(sites; t=t, U=U)
+    else
+        return xxz_manual_obc(sites; t=t, U=U)
+    end
+end
+
+
+function xxz_manual_obc(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
     _check_site_tags(sites, "Fermion")
 
     L = length(sites)
@@ -362,37 +385,91 @@ function xxz_manual(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
 
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-    for i in 1:2, j in 1:2
-        W[1][1, i, j] = id[i, j]
-        W[1][2, i, j] = -t * a_dag[i, j]
-        W[1][3, i, j] = -t * a[i, j]
-        W[1][4, i, j] = U * n[i, j]
-    end
+    fill_op!(W[1], (1,), id)
+    fill_op!(W[1], (2,), a_dag, -t)
+    fill_op!(W[1], (3,), a, -t)
+    fill_op!(W[1], (4,), n, U)
 
     # Bulk sites
     for l in 2:(L-1) # n is already used
         W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
-        for i in 1:2, j in 1:2
-            W[l][1, 1, i, j] = id[i, j]
-            W[l][1, 2, i, j] = -t * a_dag[i, j]
-            W[l][1, 3, i, j] = -t * a[i, j]
-            W[l][1, 4, i, j] = U * n[i, j]
+        fill_op!(W[l], (1, 1), id)
+        fill_op!(W[l], (1, 2), a_dag, -t)
+        fill_op!(W[l], (1, 3), a, -t)
+        fill_op!(W[l], (1, 4), n, U)
 
-            W[l][2, 5, i, j] = a[i, j]
-            W[l][3, 5, i, j] = a_dag[i, j]
-            W[l][4, 5, i, j] = n[i, j]
-            W[l][5, 5, i, j] = id[i, j]
-        end
+        fill_op!(W[l], (2, 5), a)
+        fill_op!(W[l], (3, 5), a_dag)
+        fill_op!(W[l], (4, 5), n)
+        fill_op!(W[l], (5, 5), id)
     end
 
     # last site
     W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
-    for i in 1:2, j in 1:2
-        W[L][2, i, j] = a[i, j]
-        W[L][3, i, j] = a_dag[i, j]
-        W[L][4, i, j] = n[i, j]
-        W[L][5, i, j] = id[i, j]
+    fill_op!(W[L], (2,), a)
+    fill_op!(W[L], (3,), a_dag)
+    fill_op!(W[L], (4,), n)
+    fill_op!(W[L], (5,), id)
+
+    return MPO(W)
+end
+
+function xxz_manual_pbc(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
+    _check_site_tags(sites, "Fermion")
+
+    L = length(sites)
+    L ≥ 3 || throw(ArgumentError("Need at least three lattice sites (PBC not possible for L < 3)"))
+
+    # Local operators
+    id = [1.0 0.0; 0.0 1.0]
+    z = ComplexF64[1 0; 0 -1] # Jordan-Wigner string operator
+    n = [0.0 0.0; 0.0 1.0]
+    a_dag = [0.0 0.0; 1.0 0.0] # 'bosonic' creation operator
+    a = [0.0 1.0; 0.0 0.0] # 'bosonic' annihilation operator
+
+    # Virtual bond indices (dimension 8), excluding boundaries
+    links = [Index(8, "link,l=$i") for i in 1:(L - 1)]
+    W = Vector{ITensor}(undef, L) # undef: do not initialize yet
+
+    # First site
+    W[1] = ITensor(links[1], prime(sites[1]), sites[1])
+    fill_op!(W[1], (1,), id)
+    fill_op!(W[1], (2,), a_dag, -t)
+    fill_op!(W[1], (3,), a, -t)
+    fill_op!(W[1], (4,), n, U)
+    fill_op!(W[1], (5,), a_dag*z, -t)
+    fill_op!(W[1], (6,), z*a, -t)
+    fill_op!(W[1], (7,), n, U)
+
+    # Bulk sites
+    for l in 2:(L-1) # n is already used
+        W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
+        fill_op!(W[l], (1, 1), id)
+        fill_op!(W[l], (1, 2), a_dag, -t)
+        fill_op!(W[l], (1, 3), a, -t)
+        fill_op!(W[l], (1, 4), n, U)
+
+        fill_op!(W[l], (2, 8), a)
+        fill_op!(W[l], (3, 8), a_dag)
+        fill_op!(W[l], (4, 8), n)
+
+        fill_op!(W[l], (5, 5), z)
+        fill_op!(W[l], (6, 6), z)
+
+        fill_op!(W[l], (7, 7), id)
+        fill_op!(W[l], (8, 8), id)
     end
+
+    # last site
+    W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
+    fill_op!(W[L], (2,), a)
+    fill_op!(W[L], (3,), a_dag)
+    fill_op!(W[L], (4,), n)
+    fill_op!(W[L], (5,), a)
+    fill_op!(W[L], (6,), a_dag)
+    fill_op!(W[L], (7,), n)
+    fill_op!(W[L], (8,), id)
+
     return MPO(W)
 end
 
@@ -413,7 +490,8 @@ and the one acting on spinless fermions as the XXZ Hamiltonian.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
-- `pbc::Bool=false`: Whether to include periodic boundary conditions (PBC).
+- `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
+                     or open boundary conditions (OBC).
 - `J::Real=1.0`: Exchange coupling constant in the XY plane.
 - `Jz::Real=1.0`: Exchange coupling constant in the Z direction.
 
@@ -429,6 +507,8 @@ function heisenberg(sites::Vector{<:Index}; pbc::Bool=false, J::Real=1.0, Jz::Re
 
     L = length(sites)
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+    pbc && L < 3 && throw(ArgumentError("Periodic boundary conditions not possible for L < 3"))
+
 
     os = OpSum()
     for j in 1:(L-1)
@@ -437,8 +517,8 @@ function heisenberg(sites::Vector{<:Index}; pbc::Bool=false, J::Real=1.0, Jz::Re
         os += J/2, "S-", j, "S+", j + 1
     end
 
-    # add terms at boundaries for periodic boundary conditions
-    if pbc
+    # add terms at boundaries for periodic boundary conditions if L > 2
+    if pbc && L > 2
         os += Jz, "Sz", L, "Sz", 1
         os += J/2, "S+", L, "S-", 1
         os += J/2, "S-", L, "S+", 1
@@ -462,6 +542,8 @@ machine (FSM) approach and details can be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
+- `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
+                     or open boundary conditions (OBC).
 - `J::Real=1.0`: Exchange coupling constant in the XY plane.
 - `Jz::Real=1.0`: Exchange coupling constant in the Z direction.
 
@@ -529,12 +611,11 @@ function heisenberg_manual_obc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
 end
 
 
-
 function heisenberg_manual_pbc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0)::MPO
     _check_site_tags(sites, "S=1/2")
 
     L = length(sites)
-    L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+    L ≥ 3 || throw(ArgumentError("Need at least three lattice sites (PBC not possible for L < 3)"))
 
     # Local operators (ensure Float64 type for division)
     id = [1.0 0.0; 0.0 1.0]
@@ -586,24 +667,6 @@ function heisenberg_manual_pbc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
 
     return MPO(W)
 end
-
-# let
-#     using Random
-#     L = 3
-#     Jz = 4.0
-#     pbc = true
-#     sites = siteinds("S=1/2", L)
-#     mpo_pbc = heisenberg(sites; Jz=Jz, pbc=pbc)
-#     mpo_pbc_man = heisenberg_manual(sites; Jz=Jz, pbc=pbc)
-
-#     # set seed for reproducibility
-#     Random.seed!(42)
-#     state = ["1", "0", "1"]
-#     psi = random_mps(sites, state)
-#     @show inner(psi', mpo_pbc, psi)
-#     @show inner(psi', mpo_pbc_man, psi)
-#     # @show inner(state', mpo_man, state)
-# end
 
 
 """

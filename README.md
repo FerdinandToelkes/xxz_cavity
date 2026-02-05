@@ -191,7 +191,8 @@ This part is for myself during developing the code
     - implement pbc (at least for OpSum method)
     - test it
     - develop DMRG code -> look at tutorials and FAQs, maybe ask Juani
-    - compare DMRG results to ED -> maybe define a top level bash script, that can run them both to systematically abstract from the single packages; think about nice "interface" for systematic data creation 
+    - compare DMRG results to ED -> maybe define a top level bash script, that can run them both to systematically abstract from the single packages; think about nice "interface" for systematic data creation
+    - add some more notes to construction of MPO with FSM directly in code 
 
 
 ## NQS

@@ -44,16 +44,25 @@ end
 """
     test_invalid_sites_errors(args...) -> Nothing
 
-Ensure both MPO constructors throw ArgumentError for invalid sites.
+Ensure both MPO constructors throw ArgumentError for invalid sites. Note that we are doing sneaky
+stuff here. We use that pbc=false is the default for the MPO constructors. This way, we can also
+use this function for testing the pauli_sum functions, which don't have a pbc argument, without
+having to write a separate helper function for that.
 """
 function test_invalid_sites_errors(
     opsum_fn::Function,
     manual_fn::Function,
-    invalid_sites::Tuple{Vararg{Vector{<:Index}}}
+    invalid_sites::Tuple{Vararg{Vector{<:Index}}};
+    pbc::Bool=false
 )::Nothing
     for sites in invalid_sites
-        @test_throws ArgumentError opsum_fn(sites)
-        @test_throws ArgumentError manual_fn(sites)
+        if pbc
+            @test_throws ArgumentError opsum_fn(sites; pbc=pbc)
+            @test_throws ArgumentError manual_fn(sites; pbc=pbc)
+        else
+            @test_throws ArgumentError opsum_fn(sites)
+            @test_throws ArgumentError manual_fn(sites)
+        end
     end
     return nothing
 end
@@ -90,12 +99,13 @@ Test equivalence of XXZ MPO constructed via OpSum vs manual construction.
 """
 function test_xxz_equivalence(
     sites::Vector{<:Index};
+    pbc::Bool,
     t::Real,
     U::Real,
     rng::AbstractRNG
 )
-    H = Dmrg.xxz(sites; t=t, U=U)
-    Hm = Dmrg.xxz_manual(sites; t=t, U=U)
+    H = Dmrg.xxz(sites; pbc=pbc, t=t, U=U)
+    Hm = Dmrg.xxz_manual(sites; pbc=pbc, t=t, U=U)
     test_equivalence(sites, H, Hm; rng=rng, product_state="0")
     return nothing
 end
@@ -241,34 +251,43 @@ end
 @testset "XXZ MPO: OpSum vs manual construction" begin
     # test setup
     rng = MersenneTwister(1234)
-    Ls = (2, 6)
+    Ls = (3, 6)
     ts = (1.0)
     Us = (2.0, -1.0)
+    pbcs = (false, true)
 
     @testset "valid constructions" begin
-        for L in Ls, t in ts, U in Us
-            @testset "L=$L, t=$t, U=$U" begin
+        for L in Ls, t in ts, U in Us, pbc in pbcs
+            @testset "L=$L, t=$t, U=$U, pbc=$pbc" begin
                 sites = siteinds("Fermion", L)
-                test_xxz_equivalence(sites; t=t, U=U, rng=rng)
+                test_xxz_equivalence(sites; pbc=pbc, t=t, U=U, rng=rng)
             end
         end
     end
 
     @testset "invalid sites" begin
-        # wrong particle type & too short chain
+        # wrong particle type & too short chains
         test_invalid_sites_errors(
             Dmrg.xxz,
             Dmrg.xxz_manual,
-            (siteinds("S=1/2", 3), siteinds("Fermion", 1))
+            (siteinds("S=1/2", 3), siteinds("Fermion", 1),)
+        )
+        # too short chain for periodic boundary conditions
+        test_invalid_sites_errors(
+            Dmrg.xxz,
+            Dmrg.xxz_manual,
+            (siteinds("Fermion", 2),); # , since function is defined for variable number of sites
+            pbc=true
         )
     end
 
     @testset "zero-coupling sanity check" begin
         sites = siteinds("Fermion", 4)
-        ψ = random_mps(rng, sites; linkdims = 5)
-        H = Dmrg.xxz(sites; t=0.0, U=0.0)
-        @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)
+        ψ = random_mps(rng, sites; linkdims=5)
+        H = Dmrg.xxz(sites; t=0.0, U=0.0, pbc=false)
+        @test isapprox(inner(ψ', H, ψ), 0.0; atol=ATOL)
     end
+
 end
 
 # ------------------------------
@@ -278,14 +297,14 @@ end
 @testset "Heisenberg MPO: OpSum vs manual construction" begin
     # test setup
     rng = MersenneTwister(1234)
-    Ls = (2, 6)
+    Ls = (3, 6)
     Js = (2.5)
     Jzs = (1.0, -1.0)
     pbcs = (false, true)
 
     @testset "valid constructions" begin
         for L in Ls, J in Js, Jz in Jzs, pbc in pbcs
-            @testset "L=$L, J=$J, Jz=$Jz" begin
+            @testset "L=$L, J=$J, Jz=$Jz, pbc=$pbc" begin
                 sites = siteinds("S=1/2", L)
                 test_heisenberg_equivalence(sites; pbc=pbc, J=J, Jz=Jz, rng=rng)
             end
@@ -297,15 +316,22 @@ end
         test_invalid_sites_errors(
             Dmrg.heisenberg,
             Dmrg.heisenberg_manual,
-            (siteinds("S=1", 3),siteinds("S=1/2", 1))
+            (siteinds("S=1", 3), siteinds("S=1/2", 1))
+        )
+        # too short chain for periodic boundary conditions
+        test_invalid_sites_errors(
+            Dmrg.heisenberg,
+            Dmrg.heisenberg_manual,
+            (siteinds("S=1/2", 2),); # , since function is defined for variable number of sites
+            pbc=true
         )
     end
 
     @testset "zero-coupling sanity check" begin
         sites = siteinds("S=1/2", 4)
-        ψ = random_mps(rng, sites; linkdims = 5)
+        ψ = random_mps(rng, sites; linkdims=5)
         H = Dmrg.heisenberg(sites; pbc=false, J=0.0, Jz=0.0)
-        @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)
+        @test isapprox(inner(ψ', H, ψ), 0.0; atol=ATOL)
     end
 end
 

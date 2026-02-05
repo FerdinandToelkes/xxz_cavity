@@ -10,7 +10,6 @@ include("utils.jl")
 include("photon.jl")
 
 include("construct_mpo.jl")
-export xxz_cavity_dev
 export xxz_cavity, xxz_cavity_manual
 export xxz, xxz_manual
 export heisenberg, heisenberg_manual
