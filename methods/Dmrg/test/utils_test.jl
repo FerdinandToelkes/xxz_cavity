@@ -5,8 +5,6 @@ using ITensorMPS
 using Random
 using Test
 
-const ATOL = 1e-12  # absolute tolerance numerical comparisons
-
 
 @testset "Energy Variance Tests" begin
     # Initialize random number generator
@@ -78,7 +76,7 @@ end
     T = ITensor(i, j, k, l)
     M = ComplexF64[1 2; 3 4]
 
-    Dmrg.fill_op!(T, (1, 1), M, 1.0)
+    Dmrg.fill_op!(T, (1, 1), M; prefactor=1.0)
     @test T[1, 1, 1, 1] == 1
     @test T[1, 1, 1, 2] == 2
     @test T[1, 1, 2, 1] == 3
@@ -90,7 +88,7 @@ end
     T = ITensor(i, j, k, l)
     M = ComplexF64[1 2; 3 4]
 
-    Dmrg.fill_op!(T, (2, 1), M, 0.5)
+    Dmrg.fill_op!(T, (2, 1), M; prefactor=0.5)
     @test T[2, 1, 1, 1] == 0.5
     @test T[2, 1, 1, 2] == 1.0
     @test T[2, 1, 2, 1] == 1.5
@@ -102,7 +100,7 @@ end
     T = ITensor(i, j, k, l)
     M_wrong = ComplexF64[1 2 3; 4 5 6; 7 8 9]  # 3x3 matrix
 
-    @test_throws ArgumentError  Dmrg.fill_op!(T, (1, 1), M_wrong, 1.0, 2)
+    @test_throws ArgumentError  Dmrg.fill_op!(T, (1, 1), M_wrong; prefactor=1.0, local_dim=2)
 end
 
 @testset "Check Pauli Symbol Tests" begin

@@ -71,7 +71,7 @@ end
 end
 
 """
-    fill_op!(T::ITensor, inds::Tuple, M::AbstractMatrix, prefactor::Real=1.0, local_dim::Int=2)
+    fill_op!(T::ITensor, inds::Tuple, M::AbstractMatrix; prefactor::Real=1.0, local_dim::Int=2)
 
 Helper function to fill an ITensor `T` with matrix elements from `M` at specified indices. This is
 heavily used in the functions for manual MPO construction. This replaces calls like this
@@ -91,13 +91,13 @@ heavily used in the functions for manual MPO construction. This replaces calls l
 @inline function fill_op!(
     T::ITensor,
     inds::Tuple,
-    M::AbstractMatrix,
+    M::AbstractMatrix;
     prefactor::Real=1.0,
     local_dim::Int=2
     )
     # check if dimensions of M match local_dim
     size(M, 1) == local_dim || size(M, 2) == local_dim ||
-        throw(ArgumentError("Dimension of Matrix M is not equal to local_dim"))
+        throw(ArgumentError("Dimension of Matrix M ($(size(M))) is not equal to local_dim ($(local_dim))"))
 
     for i in 1:local_dim, j in 1:local_dim
         T[inds..., i, j] = prefactor * M[i, j]

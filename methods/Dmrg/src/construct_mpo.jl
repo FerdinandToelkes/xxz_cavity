@@ -3,37 +3,6 @@ using ITensorMPS
 using LinearAlgebra
 
 
-"""
-    build_peierls_phase(g::Real, dim_ph::Int) -> Matrix{ComplexF64}
-
-Construct the Peierls phase matrix ``\\exp(ig(a + a^\\dagger))`` for a photon
-site with given dimension `dim_ph`
-
-# Arguments
-- `g::Real`: Coupling strength.
-- `dim_ph::Int`: Dimension of the photon site.
-
-# Returns
-- `Matrix{ComplexF64}`: The Peierls phase matrix of size `dim_ph x dim_ph`.
-"""
-function build_peierls_phase(g::Real, dim_ph::Int)::Matrix{ComplexF64}
-    # zeros on diagonal
-    d = zeros(Float64, dim_ph)
-
-    # off-diagonal entries: sqrt(1), …, sqrt(dim_ph-1)
-    e = sqrt.(collect(1:dim_ph-1)) # i.e. from 1 to N_ph-1
-
-    # diagonalize a + a^\dagger =: A which is tridiagonal in the number basis
-    A = SymTridiagonal(d, e)
-    eigenvals, eigenvecs = eigen(A)
-
-    # write A = V D V^\dagger with D diagonal matrix of eigenvals and V matrix of eigenvecs
-    phases = exp.(1im * g .* eigenvals) # .* element-wise multiplication
-    # U = V * diag(phases) * V†
-    U = eigenvecs * Diagonal(phases) * eigenvecs'
-
-    return ComplexF64.(U) # ensure complex type
-end
 
 
 """
@@ -189,79 +158,73 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
 - For more details, see e.g. [this ITensor tutorial](https://itensor.org/docs.cgi?page=tutorials/fermions),
   [this paper](https://arxiv.org/pdf/1611.02498), or [this topic on itensor.discourse](https://itensor.discourse.group/t/manual-construction-of-nearest-neighbor-hopping-of-spinless-fermions-on-a-1d-chain/2567/5)
 """
-function xxz_cavity_manual(
-    sites::Vector{<:Index};
-    pbc::Bool=false,
-    t::Real=1.0,
-    U::Real=1.0,
-    g::Real=1.0,
-    omega::Real=1.0
-)::MPO
-    # unpack sites and check their validity
-    f_sites = sites[1:end-1]
-    ph_site = sites[end]
-    _check_site_tags(f_sites, "Fermion")
-    _check_site_tag(ph_site, "Photon")
+# function xxz_cavity_manual(
+#     sites::Vector{<:Index};
+#     pbc::Bool=false,
+#     t::Real=1.0,
+#     U::Real=1.0,
+#     g::Real=1.0,
+#     omega::Real=1.0
+# )::MPO
+#     # unpack sites and check their validity
+#     f_sites = sites[1:end-1]
+#     ph_site = sites[end]
+#     _check_site_tags(f_sites, "Fermion")
+#     _check_site_tag(ph_site, "Photon")
 
-    L_mpo = length(sites) # number of sites in MPO (fermion sites + photon site)
-    L = length(f_sites) # number of fermionic sites
-    L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+#     L_mpo = length(sites) # number of sites in MPO (fermion sites + photon site)
+#     L = length(f_sites) # number of fermionic sites
+#     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
 
-    # Local operators on fermionic sites
-    id_f = ComplexF64[1 0; 0 1] # complex since we have complex phases later
-    n_f = ComplexF64[0 0; 0 1]
-    a_dag = ComplexF64[0 0; 1 0] # 'bosonic' creation operator from JWT
-    a = ComplexF64[0 1; 0 0] # 'bosonic' annihilation operator from JWT
+#     # Local operators on fermionic sites
+#     id_f = ComplexF64[1 0; 0 1] # complex since we have complex phases later
+#     n_f = ComplexF64[0 0; 0 1]
+#     a_dag = ComplexF64[0 0; 1 0] # 'bosonic' creation operator from JWT
+#     a = ComplexF64[0 1; 0 0] # 'bosonic' annihilation operator from JWT
 
-    # Local operators on photon site
-    dim_ph = dim(ph_site)
-    id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
-    n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
-    peierls_phase = build_peierls_phase(g, dim_ph)
-    peierls_phase_conj = peierls_phase' # conjugate transpose
+#     # Local operators on photon site
+#     dim_ph = dim(ph_site)
+#     id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
+#     n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
+#     peierls_phase = build_peierls_phase(g, dim_ph)
+#     peierls_phase_conj = peierls_phase' # conjugate transpose
 
-    # Virtual bond indices (dimension 8), excluding boundaries
-    links = [Index(8, "link,l=$i") for i in 1:L_mpo]
-    W = Vector{ITensor}(undef, L_mpo) # undef: do not initialize yet
+#     # Virtual bond indices (dimension 8), excluding boundaries
+#     links = [Index(8, "link,l=$i") for i in 1:L_mpo]
+#     W = Vector{ITensor}(undef, L_mpo) # undef: do not initialize yet
 
-    # First site (fermionic)
-    W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-    for i in 1:2, j in 1:2
-        W[1][1, i, j] = id_f[i, j]
-        W[1][2, i, j] = U * n_f[i, j]
-        W[1][3, i, j] = a_dag[i, j]
-        W[1][4, i, j] = a[i, j]
-    end
+#     # First site (fermionic)
+#     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
+#     fill_op!(W[1], (1,), id_f)
+#     fill_op!(W[1], (2,), n_f; prefactor=U)
+#     fill_op!(W[1], (3,), a_dag)
+#     fill_op!(W[1], (4,), a)
 
-    # Bulk sites (fermionic)
-    for l in 2:(L_mpo-1)
-        W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
-        for i in 1:2, j in 1:2
-            W[l][1, 1, i, j] = id_f[i, j]
-            W[l][1, 2, i, j] = U * n_f[i, j]
-            W[l][1, 3, i, j] = a_dag[i, j]
-            W[l][1, 4, i, j] = a[i, j]
+#     # Bulk sites (fermionic)
+#     for l in 2:(L_mpo-1)
+#         W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
+#         fill_op!(W[l], (1, 1), id_f)
+#         fill_op!(W[l], (1, 2), n_f; prefactor=U)
+#         fill_op!(W[l], (1, 3), a_dag)
+#         fill_op!(W[l], (1, 4), a)
 
-            W[l][2, 5, i, j] = n_f[i, j]
-            W[l][3, 6, i, j] = a[i, j]
-            W[l][4, 7, i, j] = a_dag[i, j]
+#         fill_op!(W[l], (2, 5), n_f)
+#         fill_op!(W[l], (3, 6), a)
+#         fill_op!(W[l], (4, 7), a_dag)
 
-            W[l][5, 5, i, j] = id_f[i, j]
-            W[l][6, 6, i, j] = id_f[i, j]
-            W[l][7, 7, i, j] = id_f[i, j]
-        end
-    end
+#         fill_op!(W[l], (5, 5), id_f)
+#         fill_op!(W[l], (6, 6), id_f)
+#         fill_op!(W[l], (7, 7), id_f)
+#     end
 
-    # last site (photon)
-    W[L_mpo] = ITensor(links[L_mpo-1], prime(sites[L_mpo]), sites[L_mpo])
-    for i in 1:dim_ph, j in 1:dim_ph
-        W[L_mpo][1, i, j] = omega * n_ph[i, j]
-        W[L_mpo][5, i, j] = id_ph[i, j]
-        W[L_mpo][6, i, j] = -t * peierls_phase[i, j]
-        W[L_mpo][7, i, j] = -t * peierls_phase_conj[i, j]
-    end
-    return MPO(W)
-end
+#     # last site (photon)
+#     W[L_mpo] = ITensor(links[L_mpo-1], prime(sites[L_mpo]), sites[L_mpo])
+#     fill_op!(W[L_mpo], (1,), n_ph; prefactor=omega, local_dim=dim_ph)
+#     fill_op!(W[L_mpo], (5,), id_ph; local_dim=dim_ph)
+#     fill_op!(W[L_mpo], (6,), peierls_phase; prefactor=-t, local_dim=dim_ph)
+#     fill_op!(W[L_mpo], (7,), peierls_phase_conj; prefactor=-t, local_dim=dim_ph)
+#     return MPO(W)
+# end
 
 
 """
@@ -386,17 +349,17 @@ function xxz_manual_obc(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
     fill_op!(W[1], (1,), id)
-    fill_op!(W[1], (2,), a_dag, -t)
-    fill_op!(W[1], (3,), a, -t)
-    fill_op!(W[1], (4,), n, U)
+    fill_op!(W[1], (2,), a_dag; prefactor=-t)
+    fill_op!(W[1], (3,), a; prefactor=-t)
+    fill_op!(W[1], (4,), n; prefactor=U)
 
     # Bulk sites
     for l in 2:(L-1) # n is already used
         W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
         fill_op!(W[l], (1, 1), id)
-        fill_op!(W[l], (1, 2), a_dag, -t)
-        fill_op!(W[l], (1, 3), a, -t)
-        fill_op!(W[l], (1, 4), n, U)
+        fill_op!(W[l], (1, 2), a_dag; prefactor=-t)
+        fill_op!(W[l], (1, 3), a; prefactor=-t)
+        fill_op!(W[l], (1, 4), n; prefactor=U)
 
         fill_op!(W[l], (2, 5), a)
         fill_op!(W[l], (3, 5), a_dag)
@@ -434,20 +397,20 @@ function xxz_manual_pbc(sites::Vector{<:Index}; t::Real=1.0, U::Real=1.0)::MPO
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
     fill_op!(W[1], (1,), id)
-    fill_op!(W[1], (2,), a_dag, -t)
-    fill_op!(W[1], (3,), a, -t)
-    fill_op!(W[1], (4,), n, U)
-    fill_op!(W[1], (5,), a_dag*z, -t)
-    fill_op!(W[1], (6,), z*a, -t)
-    fill_op!(W[1], (7,), n, U)
+    fill_op!(W[1], (2,), a_dag; prefactor=-t)
+    fill_op!(W[1], (3,), a; prefactor=-t)
+    fill_op!(W[1], (4,), n; prefactor=U)
+    fill_op!(W[1], (5,), a_dag*z; prefactor=-t)
+    fill_op!(W[1], (6,), z*a; prefactor=-t)
+    fill_op!(W[1], (7,), n; prefactor=U)
 
     # Bulk sites
     for l in 2:(L-1) # n is already used
         W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
         fill_op!(W[l], (1, 1), id)
-        fill_op!(W[l], (1, 2), a_dag, -t)
-        fill_op!(W[l], (1, 3), a, -t)
-        fill_op!(W[l], (1, 4), n, U)
+        fill_op!(W[l], (1, 2), a_dag; prefactor=-t)
+        fill_op!(W[l], (1, 3), a; prefactor=-t)
+        fill_op!(W[l], (1, 4), n; prefactor=U)
 
         fill_op!(W[l], (2, 8), a)
         fill_op!(W[l], (3, 8), a_dag)
@@ -581,9 +544,9 @@ function heisenberg_manual_obc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
 
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-    fill_op!(W[1], (2,), S_minus, J/2)
-    fill_op!(W[1], (3,), S_plus, J/2)
-    fill_op!(W[1], (4,), S_z, Jz)
+    fill_op!(W[1], (2,), S_minus; prefactor=J/2)
+    fill_op!(W[1], (3,), S_plus; prefactor=J/2)
+    fill_op!(W[1], (4,), S_z; prefactor=Jz)
     fill_op!(W[1], (5,), id)
 
     # Bulk sites
@@ -594,9 +557,9 @@ function heisenberg_manual_obc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
         fill_op!(W[n], (3, 1), S_minus)
         fill_op!(W[n], (4, 1), S_z)
 
-        fill_op!(W[n], (5, 2), S_minus, J/2)
-        fill_op!(W[n], (5, 3), S_plus, J/2)
-        fill_op!(W[n], (5, 4), S_z, Jz)
+        fill_op!(W[n], (5, 2), S_minus; prefactor=J/2)
+        fill_op!(W[n], (5, 3), S_plus; prefactor=J/2)
+        fill_op!(W[n], (5, 4), S_z; prefactor=Jz)
         fill_op!(W[n], (5, 5), id)
     end
 
@@ -645,9 +608,9 @@ function heisenberg_manual_pbc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
         fill_op!(W[n], (1, 3), S_minus)
         fill_op!(W[n], (1, 4), S_z)
 
-        fill_op!(W[n], (2, 8), S_minus, J/2)
-        fill_op!(W[n], (3, 8), S_plus, J/2)
-        fill_op!(W[n], (4, 8), S_z, Jz)
+        fill_op!(W[n], (2, 8), S_minus; prefactor=J/2)
+        fill_op!(W[n], (3, 8), S_plus; prefactor=J/2)
+        fill_op!(W[n], (4, 8), S_z; prefactor=Jz)
 
         fill_op!(W[n], (5, 5), id)
         fill_op!(W[n], (6, 6), id)
@@ -657,12 +620,12 @@ function heisenberg_manual_pbc(sites::Vector{<:Index}; J::Real=1.0, Jz::Real=1.0
 
     # Last site
     W[L] = ITensor(links[L-1], prime(sites[L]), sites[L])
-    fill_op!(W[L], (2,), S_minus, J/2)
-    fill_op!(W[L], (3,), S_plus, J/2)
-    fill_op!(W[L], (4,), S_z, Jz)
-    fill_op!(W[L], (5,), S_minus, J/2)
-    fill_op!(W[L], (6,), S_plus, J/2)
-    fill_op!(W[L], (7,), S_z, Jz)
+    fill_op!(W[L], (2,), S_minus; prefactor=J/2)
+    fill_op!(W[L], (3,), S_plus; prefactor=J/2)
+    fill_op!(W[L], (4,), S_z; prefactor=Jz)
+    fill_op!(W[L], (5,), S_minus; prefactor=J/2)
+    fill_op!(W[L], (6,), S_plus; prefactor=J/2)
+    fill_op!(W[L], (7,), S_z; prefactor=Jz)
     fill_op!(W[L], (8,), id)
 
     return MPO(W)
@@ -746,21 +709,21 @@ function pauli_sum_manual(sites::Vector{<:Index}; a::Real=1.0, pauli::Symbol=:X,
 
     # First site
     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-    fill_op!(W[1], (1,), σ, a)
+    fill_op!(W[1], (1,), σ; prefactor=a)
     fill_op!(W[1], (2,), id)
 
     # Bulk sites
     for n in 2:(L - 1)
         W[n] = ITensor(links[n - 1], links[n], prime(sites[n]), sites[n])
         fill_op!(W[n], (1, 1), id)
-        fill_op!(W[n], (2, 1), σ, a)
+        fill_op!(W[n], (2, 1), σ; prefactor=a)
         fill_op!(W[n], (2, 2), id)
     end
 
     # Last site
     W[L] = ITensor(links[L - 1], prime(sites[L]), sites[L])
     fill_op!(W[L], (1,), id)
-    fill_op!(W[L], (2,), σ, a)
+    fill_op!(W[L], (2,), σ; prefactor=a)
 
     return MPO(W)
 end
