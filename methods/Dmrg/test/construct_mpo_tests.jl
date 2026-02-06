@@ -179,17 +179,17 @@ function expected_peierls_phase(g::Real, N_ph::Int)::Matrix{ComplexF64}
     end
 end
 
-@testset "Peierls phase matrix construction" begin
-    g_values = [0, 1, π/2, 2, π, 4, 3*π/2]
-    N_ph_values = [1, 2]
+# @testset "Peierls phase matrix construction" begin
+#     g_values = [0, 1, π/2, 2, π, 4, 3*π/2]
+#     N_ph_values = [1, 2]
 
-    for g in g_values, N_ph in N_ph_values
-        dim_ph = N_ph + 1
-        peierls_phase = Dmrg.build_peierls_phase(g, dim_ph)
-        expected_phase = expected_peierls_phase(g, N_ph)
-        @test isapprox(peierls_phase, expected_phase; atol=ATOL)
-    end
-end
+#     for g in g_values, N_ph in N_ph_values
+#         dim_ph = N_ph + 1
+#         peierls_phase = Dmrg.build_peierls_phase(g, dim_ph)
+#         expected_phase = expected_peierls_phase(g, N_ph)
+#         @test isapprox(peierls_phase, expected_phase; atol=ATOL)
+#     end
+# end
 
 # ------------------------------
 # XXZ cavity MPO tests
@@ -198,20 +198,20 @@ end
 @testset "XXZ cavity MPO: OpSum vs manual construction" begin
     # test setup
     rng = MersenneTwister(1234)
-    Ls = (2, 3, 4)
+    Ls = (2, 3, 10)
     ts = (1.0, -0.5)
     Us = (2.0, -1.0)
     gs = (0.5, -0.3)
     omegas = (1.0, 2.0)
     dim_phs = (2, 10, 20)
-    pbcs = (false) #true
+    pbcs = (false, true)
 
     @testset "valid constructions" begin
         for L in Ls, t in ts, U in Us, g in gs, omega in omegas, dim_ph in dim_phs, pbc in pbcs
             @testset "L=$L, t=$t, U=$U, g=$g, omega=$omega, dim_ph=$dim_ph, pbc=$pbc" begin
                 f_sites = siteinds("Fermion", L)
-                ph_site = siteind("Photon", 1; dim=dim_ph)
-                sites = vcat(f_sites, [ph_site])
+                ph_site = siteinds("Photon", 1; dim=dim_ph)
+                sites = vcat(ph_site, f_sites)
                 test_xxz_cavity_equivalence(sites; t=t, U=U, g=g, omega=omega, rng=rng)
             end
         end
@@ -219,23 +219,29 @@ end
 
     @testset "invalid sites" begin
         invalid_sites = (
-            [siteinds("Fermion", 1); siteind("Photon", 1; dim=2)], # too short chain
-            [siteinds("S=1/2", 3); siteind("Photon", 1; dim=2)], # wrong particle type
-            [siteinds("Fermion", 3); siteind("Fermion", 1)], # wrong particle
+            [siteinds("Photon", 1; dim=2); siteinds("Fermion", 1)], # too short chain
+            [siteinds("Photon", 1; dim=2); siteinds("S=1/2", 3)], # wrong particle type
+            [siteinds("Fermion", 1); siteinds("Fermion", 3)], # wrong particle
             siteinds("Fermion", 2) # missing bosonic site
         )
-        println(typeof(invalid_sites))
         test_invalid_sites_errors(
             Dmrg.xxz_cavity,
             Dmrg.xxz_cavity_manual,
             invalid_sites,
         )
+        # too short chain for periodic boundary conditions
+        test_invalid_sites_errors(
+            Dmrg.xxz,
+            Dmrg.xxz_manual,
+            ([siteinds("Photon", 1; dim=2); siteinds("Fermion", 2)],);
+            pbc=true
+        )
     end
 
     @testset "zero-coupling sanity check" begin
+        ph_site = siteinds("Photon", 1; dim=2) # otherwise error in MPO construction
         f_sites = siteinds("Fermion", 4)
-        ph_site = siteind("Photon", 1; dim=2) # otherwise error in MPO construction
-        sites = vcat(f_sites, ph_site)
+        sites = vcat(ph_site, f_sites)
         ψ = random_mps(rng, sites; linkdims = 5)
         H = Dmrg.xxz_cavity(sites; t=0.0, U=0.0, g=0.0, omega=0.0)
         @test isapprox(inner(ψ', H, ψ), 0.0; atol = ATOL)

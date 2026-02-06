@@ -8,6 +8,7 @@ using LinearAlgebra
 """
     xxz_cavity(
         sites::Vector{<:Index};
+        pbc::Bool=false,
         t::Real=1.0,
         U::Real=1.0,
         g::Real=1.0,
@@ -23,6 +24,9 @@ using `OpSum`.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices, with the last index being the photon site.
+
+# Keywords
+- `pbc::Bool=false`: Whether to use periodic boundary conditions.
 - `t::Real=1.0`: Hopping amplitude.
 - `U::Real=1.0`: Interaction strength.
 - `g::Real=1.0`: Coupling strength between fermions and photon mode.
@@ -43,17 +47,21 @@ function xxz_cavity(
     omega::Real=1.0
 )::MPO
     # unpack sites and check their validity
-    f_sites = sites[1:end-1]
+    ph_ind = 1 # photon site index
+    f_sites = sites[2:end]
     _check_site_tags(f_sites, "Fermion")
-    _check_site_tag(sites[end], "Photon")
+    _check_site_tag(sites[ph_ind], "Photon")
 
     L = length(f_sites) # number of fermionic sites
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+    pbc && L < 3 && throw(ArgumentError("Periodic boundary conditions not possible for L < 3"))
 
     set_cavity_params!(g=g)
     os = OpSum()
-    ph_ind = length(sites) # photon site index
-    for j in 1:(L-1)
+
+    # there are L+1 sites in total, but we only loop over the fermionic sites and
+    # exclude the last one here for open boundary conditions
+    for j in (ph_ind+1):length(sites)-1
         # dressed hopping
         os += -t, "PeierlsPhase", ph_ind, "c†", j, "c", j+1
         os += -t, "PeierlsPhaseDag", ph_ind, "c†", j+1, "c", j
@@ -80,18 +88,22 @@ function xxz_cavity_no_qn_conservation(
     omega::Real=1.0
 )::MPO
     # unpack sites and check their validity
-    f_sites = sites[1:end-1]
-    ph_site = sites[end]
+    ph_ind = 1 # photon site index
+    ph_site = sites[ph_ind]
+    f_sites = sites[2:end]
     _check_site_tags(f_sites, "Fermion")
     _check_site_tags([ph_site], "Photon")
 
     L = length(f_sites) # number of fermionic sites
     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+    pbc && L < 3 && throw(ArgumentError("Periodic boundary conditions not possible for L < 3"))
 
     P = build_peierls_phase(g, dim(ph_site))
     os = OpSum()
-    ph_ind = L + 1 # photon site index
-    for j in 1:(L-1)
+
+    # there are L+1 sites in total, but we only loop over the fermionic sites and
+    # exclude the last one here for open boundary conditions
+    for j in (ph_ind+1):length(sites)-1
         # dressed hopping
         os += -t, P, ph_ind, "c†", j, "c", j+1
         os += -t, P', ph_ind, "c†", j+1, "c", j
@@ -101,6 +113,12 @@ function xxz_cavity_no_qn_conservation(
 
     # add photon energy term
     os += omega, "N", ph_ind
+
+    if pbc
+        # add hopping terms connecting last and first fermionic site
+        os += -t, P, ph_ind, "c†", length(sites), "c", ph_ind+1
+        os += -t, P', ph_ind, "c†", ph_ind+1, "c", length(sites)
+    end
 
     return MPO(os, sites)
 end
@@ -125,6 +143,9 @@ be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices, with the last index being the photon site.
+
+# Keywords
+- `pbc::Bool=false`: Whether to use periodic boundary conditions.
 - `t::Real=1.0`: Hopping amplitude.
 - `U::Real=1.0`: Interaction strength.
 - `g::Real=1.0`: Coupling strength between fermions and photon mode.
@@ -158,74 +179,173 @@ H = \\sum_{j=1}^{L-1} -t(a^\\dagger_j a_{j+1} + a_j a^\\dagger_{j+1}) + \\sum_{j
 - For more details, see e.g. [this ITensor tutorial](https://itensor.org/docs.cgi?page=tutorials/fermions),
   [this paper](https://arxiv.org/pdf/1611.02498), or [this topic on itensor.discourse](https://itensor.discourse.group/t/manual-construction-of-nearest-neighbor-hopping-of-spinless-fermions-on-a-1d-chain/2567/5)
 """
-# function xxz_cavity_manual(
-#     sites::Vector{<:Index};
-#     pbc::Bool=false,
-#     t::Real=1.0,
-#     U::Real=1.0,
-#     g::Real=1.0,
-#     omega::Real=1.0
-# )::MPO
-#     # unpack sites and check their validity
-#     f_sites = sites[1:end-1]
-#     ph_site = sites[end]
-#     _check_site_tags(f_sites, "Fermion")
-#     _check_site_tag(ph_site, "Photon")
+function xxz_cavity_manual(
+    sites::Vector{<:Index};
+    pbc::Bool=false,
+    t::Real=1.0,
+    U::Real=1.0,
+    g::Real=1.0,
+    omega::Real=1.0
+)::MPO
+    if pbc
+        return xxz_cavity_manual_pbc(sites; t=t, U=U, g=g, omega=omega)
+    else
+        return xxz_cavity_manual_obc(sites; t=t, U=U, g=g, omega=omega)
+    end
+end
 
-#     L_mpo = length(sites) # number of sites in MPO (fermion sites + photon site)
-#     L = length(f_sites) # number of fermionic sites
-#     L ≥ 2 || throw(ArgumentError("Need at least two lattice sites"))
+function xxz_cavity_manual_obc(
+    sites::Vector{<:Index};
+    t::Real=1.0,
+    U::Real=1.0,
+    g::Real=1.0,
+    omega::Real=1.0
+)::MPO
+    # unpack sites and check their validity
+    f_sites = sites[2:end]
+    ph_site = sites[1]
+    _check_site_tags(f_sites, "Fermion")
+    _check_site_tag(ph_site, "Photon")
 
-#     # Local operators on fermionic sites
-#     id_f = ComplexF64[1 0; 0 1] # complex since we have complex phases later
-#     n_f = ComplexF64[0 0; 0 1]
-#     a_dag = ComplexF64[0 0; 1 0] # 'bosonic' creation operator from JWT
-#     a = ComplexF64[0 1; 0 0] # 'bosonic' annihilation operator from JWT
+    L_mpo = length(sites) # number of sites in MPO (fermion sites + photon site)
+    length(f_sites) ≥ 2 ||
+        throw(ArgumentError("Need at least two lattice sites"))
 
-#     # Local operators on photon site
-#     dim_ph = dim(ph_site)
-#     id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
-#     n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
-#     peierls_phase = build_peierls_phase(g, dim_ph)
-#     peierls_phase_conj = peierls_phase' # conjugate transpose
+    # Local operators on fermionic sites
+    id_f = ComplexF64[1 0; 0 1] # complex since we have complex phases later
+    n_f = ComplexF64[0 0; 0 1]
+    a_dag = ComplexF64[0 0; 1 0] # 'bosonic' creation operator from JWT
+    a = ComplexF64[0 1; 0 0] # 'bosonic' annihilation operator from JWT
 
-#     # Virtual bond indices (dimension 8), excluding boundaries
-#     links = [Index(8, "link,l=$i") for i in 1:L_mpo]
-#     W = Vector{ITensor}(undef, L_mpo) # undef: do not initialize yet
+    # Local operators on photon site
+    dim_ph = dim(ph_site)
+    id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
+    n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
+    peierls_phase = build_peierls_phase(g, dim_ph)
+    peierls_phase_dag = adjoint(peierls_phase) # conjugate transpose
 
-#     # First site (fermionic)
-#     W[1] = ITensor(links[1], prime(sites[1]), sites[1])
-#     fill_op!(W[1], (1,), id_f)
-#     fill_op!(W[1], (2,), n_f; prefactor=U)
-#     fill_op!(W[1], (3,), a_dag)
-#     fill_op!(W[1], (4,), a)
+    # Virtual bond indices (dimension 8), excluding boundaries
+    links = [Index(8, "link,l=$i") for i in 1:L_mpo]
+    W = Vector{ITensor}(undef, L_mpo) # undef: do not initialize yet
 
-#     # Bulk sites (fermionic)
-#     for l in 2:(L_mpo-1)
-#         W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
-#         fill_op!(W[l], (1, 1), id_f)
-#         fill_op!(W[l], (1, 2), n_f; prefactor=U)
-#         fill_op!(W[l], (1, 3), a_dag)
-#         fill_op!(W[l], (1, 4), a)
+    # First site (photon)
+    W[1] = ITensor(links[1], prime(sites[1]), sites[1])
+    fill_op!(W[1], (1,), id_ph; prefactor=U, local_dim=dim_ph)
+    fill_op!(W[1], (2,), peierls_phase; prefactor=-t, local_dim=dim_ph)
+    fill_op!(W[1], (3,), peierls_phase_dag; prefactor=-t, local_dim=dim_ph)
+    fill_op!(W[1], (7,), n_ph; prefactor=omega, local_dim=dim_ph)
 
-#         fill_op!(W[l], (2, 5), n_f)
-#         fill_op!(W[l], (3, 6), a)
-#         fill_op!(W[l], (4, 7), a_dag)
+    # Bulk sites (fermionic)
+    for l in 2:(L_mpo-1)
+        W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
+        fill_op!(W[l], (1, 4), n_f)
+        fill_op!(W[l], (2, 5), a_dag)
+        fill_op!(W[l], (3, 6), a)
 
-#         fill_op!(W[l], (5, 5), id_f)
-#         fill_op!(W[l], (6, 6), id_f)
-#         fill_op!(W[l], (7, 7), id_f)
-#     end
+        fill_op!(W[l], (4, 7), n_f)
+        fill_op!(W[l], (5, 7), a)
+        fill_op!(W[l], (6, 7), a_dag)
 
-#     # last site (photon)
-#     W[L_mpo] = ITensor(links[L_mpo-1], prime(sites[L_mpo]), sites[L_mpo])
-#     fill_op!(W[L_mpo], (1,), n_ph; prefactor=omega, local_dim=dim_ph)
-#     fill_op!(W[L_mpo], (5,), id_ph; local_dim=dim_ph)
-#     fill_op!(W[L_mpo], (6,), peierls_phase; prefactor=-t, local_dim=dim_ph)
-#     fill_op!(W[L_mpo], (7,), peierls_phase_conj; prefactor=-t, local_dim=dim_ph)
-#     return MPO(W)
-# end
+        fill_op!(W[l], (1, 1), id_f)
+        fill_op!(W[l], (2, 2), id_f)
+        fill_op!(W[l], (3, 3), id_f)
+        fill_op!(W[l], (7, 7), id_f)
+    end
 
+    # last site (fermionic)
+    W[L_mpo] = ITensor(links[L_mpo-1], prime(sites[L_mpo]), sites[L_mpo])
+    fill_op!(W[L_mpo], (4,), n_f)
+    fill_op!(W[L_mpo], (5,), a)
+    fill_op!(W[L_mpo], (6,), a_dag)
+    fill_op!(W[L_mpo], (7,), id_f)
+    return MPO(W)
+end
+
+function xxz_cavity_manual_pbc(
+    sites::Vector{<:Index};
+    t::Real=1.0,
+    U::Real=1.0,
+    g::Real=1.0,
+    omega::Real=1.0
+)::MPO
+    # unpack sites and check their validity
+    f_sites = sites[2:end]
+    ph_site = sites[1]
+    _check_site_tags(f_sites, "Fermion")
+    _check_site_tag(ph_site, "Photon")
+
+    L_mpo = length(sites) # number of sites in MPO (fermion sites + photon site)
+    length(f_sites) ≥ 3 ||
+        throw(ArgumentError("Need at least three lattice sites (PBC not possible for L < 3)"))
+
+    # Local operators on fermionic sites
+    id_f = ComplexF64[1 0; 0 1] # complex since we have complex phases later
+    n_f = ComplexF64[0 0; 0 1]
+    z = ComplexF64[1 0; 0 -1] # Jordan-Wigner string operator
+    a_dag = ComplexF64[0 0; 1 0] # 'bosonic' creation operator from JWT
+    a = ComplexF64[0 1; 0 0] # 'bosonic' annihilation operator from JWT
+
+    # Local operators on photon site
+    dim_ph = dim(ph_site)
+    id_ph = Matrix{ComplexF64}(I, dim_ph, dim_ph)
+    n_ph = Diagonal(ComplexF64.(0:dim_ph-1)) # number operator for bosons
+    peierls_phase = build_peierls_phase(g, dim_ph)
+    peierls_phase_dag = adjoint(peierls_phase) # conjugate transpose
+
+    # Virtual bond indices (dimension 10), excluding boundaries
+    links = [Index(10, "link,l=$i") for i in 1:L_mpo]
+    W = Vector{ITensor}(undef, L_mpo) # undef: do not initialize yet
+
+    # First site (photon)
+    W[1] = ITensor(links[1], prime(sites[1]), sites[1])
+    fill_op!(W[1], (1,), id_ph; prefactor=U, local_dim=dim_ph)
+    fill_op!(W[1], (2,), peierls_phase; prefactor=-t, local_dim=dim_ph)
+    fill_op!(W[1], (3,), peierls_phase_dag; prefactor=-t, local_dim=dim_ph)
+    fill_op!(W[1], (10,), n_ph; prefactor=omega, local_dim=dim_ph)
+
+    # Second site (special due to PBC combined with photon site)
+    W[2] = ITensor(links[1], links[2], prime(sites[2]), sites[2])
+    fill_op!(W[2], (1, 1), id_f)
+    fill_op!(W[2], (10, 10), id_f)
+
+    fill_op!(W[2], (1, 4), n_f)
+    fill_op!(W[2], (1, 7), n_f)
+
+    fill_op!(W[2], (2, 5), a_dag*z)
+    fill_op!(W[2], (2, 8), a_dag)
+
+    fill_op!(W[2], (3, 6), z*a)
+    fill_op!(W[2], (3, 9), a)
+
+    # Bulk sites (fermionic)
+    for l in 3:(L_mpo-1)
+        W[l] = ITensor(links[l-1], links[l], prime(sites[l]), sites[l])
+        fill_op!(W[l], (1, 7), n_f)
+        fill_op!(W[l], (2, 8), a_dag)
+        fill_op!(W[l], (3, 9), a)
+
+        fill_op!(W[l], (7, 10), n_f)
+        fill_op!(W[l], (8, 10), a)
+        fill_op!(W[l], (9, 10), a_dag)
+
+        fill_op!(W[l], (1, 1), id_f)
+        fill_op!(W[l], (4, 4), id_f)
+        fill_op!(W[l], (5, 5), z)
+        fill_op!(W[l], (6, 6), z)
+        fill_op!(W[l], (10, 10), id_f)
+    end
+
+    # last site (fermionic)
+    W[L_mpo] = ITensor(links[L_mpo-1], prime(sites[L_mpo]), sites[L_mpo])
+    fill_op!(W[L_mpo], (4,), n_f)
+    fill_op!(W[L_mpo], (5,), a)
+    fill_op!(W[L_mpo], (6,), a_dag)
+    fill_op!(W[L_mpo], (7,), n_f)
+    fill_op!(W[L_mpo], (8,), a)
+    fill_op!(W[L_mpo], (9,), a_dag)
+    fill_op!(W[L_mpo], (10,), id_f)
+    return MPO(W)
+end
 
 """
     xxz(sites::Vector{<:Index}; pbc::Bool=false, t::Real=1.0, U::Real=1.0) -> MPO
@@ -239,6 +359,8 @@ Hamiltonian and the one acting on spins as the XXZ Hamiltonian.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spinless fermions.
+
+# Keywords
 - `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
                      or open boundary conditions (OBC).
 - `t::Real=1.0`: Hopping amplitude.
@@ -288,6 +410,8 @@ on the finite state machine (FSM) approach and details can be found in my notes 
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spinless fermions.
+
+# Keywords
 - `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
                      or open boundary conditions (OBC).
 - `t::Real=1.0`: Hopping amplitude.
@@ -453,6 +577,8 @@ and the one acting on spinless fermions as the XXZ Hamiltonian.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
+
+# Keywords
 - `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
                      or open boundary conditions (OBC).
 - `J::Real=1.0`: Exchange coupling constant in the XY plane.
@@ -505,6 +631,8 @@ machine (FSM) approach and details can be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
+
+# Keywords
 - `pbc::Bool=false`: Whether to construct the Hamiltonian with periodic boundary conditions (PBC)
                      or open boundary conditions (OBC).
 - `J::Real=1.0`: Exchange coupling constant in the XY plane.
@@ -643,6 +771,8 @@ where σ_j is the Pauli matrix specified by `pauli` acting on sites with spin 1/
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
+
+# Keywords
 - `a::Real=1.0`: Coefficient multiplying the sum.
 - `pauli::Symbol=:X`: Symbol specifying which Pauli matrix to use (:X, :Y, or :Z).
 
@@ -681,6 +811,8 @@ be found in my notes on GitHub.
 
 # Arguments
 - `sites::Vector{<:Index}`: Vector of site indices for spin-1/2 particles.
+
+# Keywords
 - `a::Real=1.0`: Coefficient multiplying the sum.
 - `pauli::Symbol=:X`: Symbol specifying which Pauli matrix to use (:X, :Y, or :Z).
 

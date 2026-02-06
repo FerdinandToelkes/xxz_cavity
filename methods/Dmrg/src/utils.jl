@@ -78,14 +78,16 @@ heavily used in the functions for manual MPO construction. This replaces calls l
 `W[l][1, 1, i, j] = id_f[i, j]`.
 
 
-# Arguments:
+# Arguments
 - `T::ITensor`: The ITensor to be filled.
 - `inds::Tuple`: A tuple of indices where the matrix elements will be placed.
 - `M::AbstractMatrix`: The matrix containing the elements to be inserted into `T`.
+
+# Keywords
 - `prefactor::Real=1.0`: An optional prefactor to multiply each matrix element by before insertion.
 - `local_dim::Int=2`: The local dimension of the site (default is 2 for spin-1/2 systems).
 
-# Throws:
+# Throws
 - `ArgumentError`: If the dimensions of `M` do not match `local_dim`.
 """
 @inline function fill_op!(
@@ -95,9 +97,15 @@ heavily used in the functions for manual MPO construction. This replaces calls l
     prefactor::Real=1.0,
     local_dim::Int=2
     )
+    # check if M is square
+    size(M, 1) == size(M, 2) ||
+        throw(ArgumentError("Matrix M must be square, but has size $(size(M))"))
+
     # check if dimensions of M match local_dim
-    size(M, 1) == local_dim || size(M, 2) == local_dim ||
-        throw(ArgumentError("Dimension of Matrix M ($(size(M))) is not equal to local_dim ($(local_dim))"))
+    size(M, 1) == local_dim ||
+        throw(ArgumentError(
+            "Dimension of Matrix M ($(size(M))) is not equal to local_dim ($(local_dim))"
+            ))
 
     for i in 1:local_dim, j in 1:local_dim
         T[inds..., i, j] = prefactor * M[i, j]
