@@ -8,11 +8,11 @@ Welcome to the documentation page.
 ```@docs
 Dmrg
 xxz_cavity
-xxz_cavity_manual
 xxz
-xxz_manual
 heisenberg
-heisenberg_manual
 pauli_sum
+xxz_cavity_manual
+xxz_manual
+heisenberg_manual
 pauli_sum_manual
 ```

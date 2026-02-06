@@ -83,6 +83,7 @@ end
 ############################################################################################
 ##### Everything as in boson.jl except for "Boson" -> "Photon" and prefix "ITensors." ######
 ############################################################################################
+
 ITensors.val(vn::ValName, st::SiteType"Photon") = val(vn, alias(st))
 
 # Everything as in boson.jl except for "Boson" -> "Photon" and prefix "ITensors."
